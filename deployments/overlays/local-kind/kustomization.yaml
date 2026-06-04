@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: local-kind
+
+resources:
+  - ../../base
+
+# Map base image references to the local kind registry.
+# Image names without a registry prefix are resolved against this list.
+images:
+  - name: decisioner
+    newName: localhost:5000/decisioner
+    newTag: dev
+  - name: transactions
+    newName: localhost:5000/transactions
+    newTag: dev
+  - name: behavioral_features
+    newName: localhost:5000/behavioral_features
+    newTag: dev
+  - name: drift_monitor
+    newName: localhost:5000/drift_monitor
+    newTag: dev
+  - name: outcome_collector
+    newName: localhost:5000/outcome_collector
+    newTag: dev
+
+# Laptop-scale patches: single replica, small resource limits.
+# Applied to every Deployment carrying the tier=service label.
+patches:
+  - target:
+      kind: Deployment
+      labelSelector: tier=service
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+# Environment-specific ConfigMap pointing services at the local MinIO
+# (provided by the bundled RisingWave Helm chart) and the local Kafka.
+configMapGenerator:
+  - name: cluster-config
+    literals:
+      - OBJECT_STORE_ENDPOINT=http://risingwave-minio.risingwave.svc.cluster.local:9000
+      - KAFKA_BROKER=kafka-e11b-kafka-bootstrap.kafka.svc.cluster.local:9092
+      - MLFLOW_TRACKING_URI=http://mlflow-tracking.mlflow.svc.cluster.local
+      - RW_HOST=risingwave-frontend.risingwave.svc.cluster.local
+      - RW_PORT=4567

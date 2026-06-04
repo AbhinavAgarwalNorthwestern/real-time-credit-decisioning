@@ -1,0 +1,102 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Default to the lowest permissions; jobs that need more grant explicitly.
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Sync workspace
+        run: uv sync --all-extras
+
+      - name: Ruff check
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Sync workspace
+        run: uv sync --all-extras
+
+      - name: Mypy strict
+        run: uv run mypy --strict services/ infra/lib/
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Sync workspace
+        run: uv sync --all-extras
+
+      - name: Pytest
+        run: uv run pytest -q
+
+  rust-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cargo check (decisioner)
+        run: cargo check --manifest-path services/decisioner/Cargo.toml
+
+      - name: Cargo clippy (decisioner)
+        run: cargo clippy --manifest-path services/decisioner/Cargo.toml -- -D warnings
+
+      - name: Cargo fmt check (decisioner)
+        run: cargo fmt --manifest-path services/decisioner/Cargo.toml -- --check
+
+  kustomize-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install kubeval
+        run: |
+          curl -L https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz \
+            | tar xz -C /tmp
+          sudo mv /tmp/kubeval /usr/local/bin/
+
+      - name: Validate local-kind overlay
+        run: kubectl kustomize deployments/overlays/local-kind | kubeval --strict --ignore-missing-schemas
+
+      - name: Validate aws-eks overlay
+        run: kubectl kustomize deployments/overlays/aws-eks | kubeval --strict --ignore-missing-schemas

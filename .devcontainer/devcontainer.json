@@ -31,12 +31,12 @@
 
     // 4. Features to add to the Dev Container. More info: https://containers.dev/implementors/features.
     "features": {
-        // Python with uv, Ruff, Mypy, MonkeyType and Bandit, installed using pipx 
+        // Python with uv, Ruff, Mypy, MonkeyType and Bandit, installed using pipx
         "ghcr.io/devcontainers/features/python:1": {
             "installTools": "true",
             "toolsToInstall": "uv,ruff,mypy,MonkeyType,bandit"
         },
-        
+
         // // git
         // "ghcr.io/devcontainers/features/git:1": {
         //     "version": "os-provided",
@@ -71,7 +71,7 @@
         "vscode": {
             // Set *default* container specific settings.json values on container create.
             "settings": {
-                "python.defaultInterpreterPath": "/workspaces/real-time-ml-system-cohort-4/.venv/bin/python"
+                "python.defaultInterpreterPath": "/workspaces/realtime-credit-decisioning/.venv/bin/python"
             },
             // installs useful extensions.
             "extensions": [

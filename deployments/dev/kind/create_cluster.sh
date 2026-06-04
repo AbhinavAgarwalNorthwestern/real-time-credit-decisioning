@@ -11,7 +11,7 @@ docker network rm rwml-34fa-network
 
 # 3. Create the docker network
 echo "Creating the docker network..."
-docker network create --subnet 172.100.0.0/16 rwml-34fa-network
+docker network create --subnet 172.200.0.0/16 rwml-34fa-network
 
 # 4. Create the cluster
 echo "Creating the cluster..."
@@ -26,4 +26,3 @@ chmod +x ./install_kafka.sh
 echo "Installing Kafka UI..."
 chmod +x ./install_kafka_ui.sh
 ./install_kafka_ui.sh
-

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow-tracking
+  namespace: mlflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow
+  template:
+    metadata:
+      labels:
+        app: mlflow
+    spec:
+      containers:
+      - name: mlflow
+        image: ghcr.io/mlflow/mlflow:v2.22.0
+        ports:
+        - containerPort: 5000
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            set -e
+            pip install psycopg2-binary boto3
+
+            # Wait for Postgres
+            until python3 -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('risingwave-postgresql.risingwave.svc.cluster.local', 5432))" 2>/dev/null; do
+              echo "Waiting for Postgres..."
+              sleep 2
+            done
+
+            echo "Starting MLflow Server with Artifact Proxy..."
+            mlflow server \
+            --host 0.0.0.0 \
+            --port 5000 \
+            --backend-store-uri $DATABASE_URL \
+            --default-artifact-root mlflow-artifacts:/ \
+            --artifacts-destination s3://mlflow-d971/ \
+            --serve-artifacts
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://postgres:postgres@risingwave-postgresql.risingwave.svc.cluster.local:5432/mlflow"
+        - name: MLFLOW_S3_ENDPOINT_URL
+          value: "http://risingwave-minio.risingwave.svc.cluster.local:9000"
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-minio-secret
+              key: AccessKeyID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-minio-secret
+              key: SecretKey
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-tracking
+  namespace: mlflow
+spec:
+  selector:
+    app: mlflow
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5000

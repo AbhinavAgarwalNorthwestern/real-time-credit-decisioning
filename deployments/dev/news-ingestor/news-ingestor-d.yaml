@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: news-ingestor
+  labels:
+    app: news-ingestor
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: news-ingestor
+  template:
+    metadata:
+      labels:
+        app: news-ingestor
+    spec:
+      containers:
+      - name: news-ingestor
+        image: news-ingestor:dev
+        imagePullPolicy: Never # Use the local image
+        env:
+        - name: KAFKA_BROKER_ADDRESS
+          value: kafka-e11b-kafka-bootstrap.kafka.svc.cluster.local:9092
+        - name: CRYPTOPANIC_API_KEY
+          value: "ba5195bf14ff4b123f0c14da4673536d0ac3023f"
+        - name: KAFKA_OUTPUT_TOPIC
+          value: "news"
+        - name: POLLING_INTERVAL_SEC
+          value: "10"

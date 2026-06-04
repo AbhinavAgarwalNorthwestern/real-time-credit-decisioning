@@ -1,14 +1,74 @@
 [project]
-name = "crypto-predictor-system"
+name = "realtime-credit-decisioning-platform"
 version = "0.1.0"
-description = "Add your description here"
+description = "Real-time credit-decisioning platform with neural uplift models, contextual bandit selection, champion-challenger MLOps, and a Rust low-latency decision API."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "loguru>=0.7.3",
+    "pydantic>=2.10.6",
     "quixstreams>=3.13.1",
-    "websocket-client>=1.8.0",
+    "mlflow==2.22.0",
+    "risingwave-py",
+    "boto3>=1.42.69",
 ]
 
+[project.optional-dependencies]
+dev = []
+
 [tool.uv.workspace]
-members = ["services/trades"]
+members = [
+    # Retained from upstream cohort — sentiment-scoring pattern reused for the
+    # macro_sentiment_1h feature in the finance domain (see ADR 007).
+    "services/news",
+    "services/news-sentiment",
+    # Finance pipeline (ADR 004 decomposition; decisioner is Rust — see Cargo.toml)
+    "services/transactions",
+    "services/behavioral_features",
+    "services/drift_monitor",
+    "services/retraining_flow",
+    "services/outcome_collector",
+    # Cloud-touch abstractions (imported by application services)
+    "infra/lib",
+]
+
+[tool.uv.sources]
+risingwave-py = { git = "https://github.com/risingwavelabs/risingwave-py" }
+
+
+
+[tool.ruff]
+line-length = 88
+extend-exclude = [
+    # Generated code — BAML auto-generates these; never style-check
+    "**/baml_client",
+]
+lint.select = [
+    "C",  # mccabe rules
+    "F",  # pyflakes rules
+    "E",  # pycodestyle error rules
+    "W",  # pycodestyle warning rules
+    "B",  # flake8-bugbear rules
+    "I",  # isort rules
+]
+lint.ignore = [
+    "C901",  # max-complexity-10
+    "E501",  # line-too-long
+]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "single"
+
+[tool.mypy]
+strict = true
+# Tolerate missing third-party stubs (loguru, fire, opik, baml_py, etc.).
+# Application code remains type-checked; only the import resolution is relaxed.
+ignore_missing_imports = true
+exclude = [
+    # Generated code (BAML auto-generated)
+    ".*baml_client.*",
+    # Retained cohort code (ADR 007 — known debt; refactor scheduled for Day 1+)
+    "services/news/",
+    "services/news-sentiment/",
+]

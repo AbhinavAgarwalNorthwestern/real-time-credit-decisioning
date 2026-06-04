@@ -1,0 +1,67 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: aws-eks
+
+resources:
+  - ../../base
+
+# ECR image references. Replace AWS_ACCOUNT_ID and AWS_REGION below
+# with values from `terraform output` — or set via `kustomize edit set image`
+# in CI.
+images:
+  - name: decisioner
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/decisioner
+    newTag: v1.0.0
+  - name: transactions
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/transactions
+    newTag: v1.0.0
+  - name: behavioral_features
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/behavioral_features
+    newTag: v1.0.0
+  - name: drift_monitor
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/drift_monitor
+    newTag: v1.0.0
+  - name: outcome_collector
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/outcome_collector
+    newTag: v1.0.0
+
+# Production-scale patches.
+patches:
+  - target:
+      kind: Deployment
+      labelSelector: tier=service
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+
+  # MLflow on EKS uses IRSA — remove the embedded MinIO credentials and
+  # attach the ServiceAccount that Terraform's mlflow_server module created.
+  # The MLflow Deployment in base/ has AWS_ACCESS_KEY_ID and
+  # AWS_SECRET_ACCESS_KEY env vars (indices 2 and 3) sourced from the
+  # mlflow-minio-secret. We remove those here.
+  - target:
+      kind: Deployment
+      name: mlflow-tracking
+    patch: |
+      - op: replace
+        path: /spec/template/spec/serviceAccountName
+        value: mlflow-irsa-sa
+      - op: replace
+        path: /spec/template/spec/containers/0/env/1/value
+        value: ""
+      # Note: precise env-index removal will be added once the base/mlflow
+      # Deployment is migrated from deployments/dev/kind/manifests.
+
+# AWS-specific ConfigMap pointing services at S3, MSK (if used) or in-cluster
+# Kafka, RDS Postgres, and the EKS-resolved MLflow Service.
+configMapGenerator:
+  - name: cluster-config
+    literals:
+      - OBJECT_STORE_ENDPOINT=  # empty → boto3 uses AWS default S3 endpoint
+      - OBJECT_STORE_BUCKET=mlflow-artifacts-prod
+      - KAFKA_BROKER=kafka-e11b-kafka-bootstrap.kafka.svc.cluster.local:9092
+      - MLFLOW_TRACKING_URI=http://mlflow-tracking.mlflow.svc.cluster.local
+      - RW_HOST=risingwave-frontend.risingwave.svc.cluster.local
+      - RW_PORT=4567

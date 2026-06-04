@@ -1,0 +1,17 @@
+# Code ownership — auto-requested as reviewers on matching paths.
+# Format: <pattern> <owner> [<owner> ...]
+# Patterns follow .gitignore syntax; first match wins.
+
+# Catch-all
+*                                       @abhinavagarwal24
+
+# Architecture decisions need review before merge
+/docs/decisions/                        @abhinavagarwal24
+
+# Cloud infrastructure changes need extra scrutiny
+/infra/                                 @abhinavagarwal24
+/deployments/overlays/aws-eks/          @abhinavagarwal24
+
+# Secret-handling and rotation
+/scripts/create-mlflow-secret.sh        @abhinavagarwal24
+/.gitignore                             @abhinavagarwal24

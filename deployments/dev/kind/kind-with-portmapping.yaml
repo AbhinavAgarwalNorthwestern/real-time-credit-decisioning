@@ -1,4 +1,4 @@
-# 
+#
 # kind delete cluster --name rwml-34fa
 #
 # docker network rm rwml-34fa-network

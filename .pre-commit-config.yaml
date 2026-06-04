@@ -1,0 +1,89 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.11.7
+    hooks:
+      # Run the linter.
+      - id: ruff
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
+
+  # Local hooks — require uv to be available in the commit env
+  - repo: local
+    hooks:
+      - id: mypy-strict
+        name: mypy --strict (services + infra/lib)
+        entry: uv run mypy --strict
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+        # Limit scope to typed code; reduces noise on legacy / generated files.
+        # The pyproject.toml [tool.mypy].exclude only filters during
+        # auto-discovery; pre-commit passes explicit file paths so we need
+        # the same exclude at this layer too.
+        files: ^(services|infra/lib)/
+        exclude: |
+          (?x)^(
+              services/news/.*
+            | services/news-sentiment/.*
+            | .*baml_client/.*
+          )$
+
+      - id: cargo-fmt-decisioner
+        name: cargo fmt (decisioner)
+        # Skip silently when cargo is not on PATH (e.g. before Rust toolchain
+        # is added to the devcontainer). Re-enabled implicitly once cargo is
+        # available — no config change needed.
+        entry: bash -c 'if command -v cargo >/dev/null 2>&1; then cargo fmt --manifest-path services/decisioner/Cargo.toml -- --check; else echo "cargo not installed; skipping (see day0_log Session 10)"; fi'
+        language: system
+        files: ^services/decisioner/.*\.rs$
+        pass_filenames: false
+
+  # Cross-cutting hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+
+  # Catch accidentally committed secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        # Exclude:
+        # - lockfiles (large, generated; unlikely to introduce a new secret)
+        # - .example template files
+        # - the baseline itself
+        # - local cluster credentials (also gitignored; double-defense)
+        # - deployments/legacy/ (frozen historical files per ADR 007)
+        # - deployments/dev/kind/manifests/ (infra YAMLs with bundled-software
+        #   default credentials; trip KeywordDetector on every line that
+        #   contains the word "password")
+        # - deployments/dev/news-ingestor/ (infra YAML, same reason)
+        # - justfile (the literal string "secret" in comments trips KeywordDetector)
+        # - baml_client/ (auto-generated)
+        # If you add a NEW file in any excluded path, audit it manually.
+        exclude: |
+          (?x)^(
+              uv\.lock
+            | Cargo\.lock
+            | .*\.example
+            | \.secrets\.baseline
+            | key
+            | key\.pub
+            | kubeconfig
+            | deployments/legacy/.*
+            | deployments/dev/kind/manifests/.*\.yaml
+            | deployments/dev/news-ingestor/.*\.yaml
+            | justfile
+            | services/news-sentiment/src/news_sentiment/baml_client/.*
+          )$

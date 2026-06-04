@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and edit. terraform.tfvars is gitignored.
+
+aws_region      = "us-east-1"
+cluster_name    = "real-time-ml-prod"
+cluster_version = "1.30"
+environment     = "prod"
+
+tags = {
+  Project   = "realtime-credit-decisioning"
+  ManagedBy = "terraform"
+  Owner     = "abhinav"
+}

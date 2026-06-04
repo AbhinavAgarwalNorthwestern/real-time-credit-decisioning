@@ -8,5 +8,12 @@
         "mikestead.dotenv",
         "mitchdenny.ecdc",
         "redhat.vscode-yaml",
+
+        //"EditorConfig.editorconfig",
+        //"ms-vscode-remote.remote-containers",
+        //"mikestead.dotenv",
+        "vadimcn.vscode-lldb",
+        //"ms-vscode-remote.remote-ssh",
+        //"tamasfe.even-better-toml"
     ]
 }

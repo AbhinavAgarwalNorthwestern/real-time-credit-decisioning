@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: base
+
+# Default namespace for resources that don't specify their own.
+namespace: real-time-ml
+
+# Common labels applied to every resource — useful for selecting across the
+# whole stack with `kubectl get all -l app.kubernetes.io/part-of=...`.
+commonLabels:
+  app.kubernetes.io/part-of: realtime-credit-decisioning
+  app.kubernetes.io/managed-by: kustomize
+
+resources:
+  # MLflow tracking server (custom Deployment per ADR 005).
+  # Added when the manifest is migrated from deployments/dev/kind/manifests/mlflow-final.yaml
+  # - mlflow/
+
+  # Finance-domain services (per ADR 004 decomposition).
+  # Added as each service ships its manifests.
+  # - services-finance/transactions/
+  # - services-finance/behavioral_features/
+  # - services-finance/decisioner/
+  # - services-finance/drift_monitor/
+  # - services-finance/outcome_collector/
+
+  # Crypto-domain services (migration from deployments/dev/<service>/ progressive).
+  # - services-crypto/trades/
+  # - services-crypto/candles/
+  # - services-crypto/technical_indicators/
+  # - services-crypto/news/
+  # - services-crypto/news-sentiment/
+  # - services-crypto/predictor/
+  # - services-crypto/prediction-api/
+
+# Third-party operators (Strimzi/Kafka, RisingWave) are NOT included as
+# base resources — they are installed via Helm in each overlay using the
+# install scripts under deployments/dev/kind/ (legacy) or per-overlay
+# Helm releases (AWS, on-prem).

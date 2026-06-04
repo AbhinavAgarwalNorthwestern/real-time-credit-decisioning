@@ -1,3 +1,27 @@
 {
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "python.analysis.extraPaths": [
+      "./services/technical_indicators/src",
+      "./services/technical_indicators/src",
+      "./services/trades/src",
+      "./services/trades/src",
+      "./services/predictor/src",
+      "./services/predictor/src",
+      "./services/predictor/src",
+      "./services/news/src",
+      "./services/news-sentiment/src",
+      "./services/news-sentiment/src",
+      "./services/news-sentiment/src"
+    ],
+
+
+  "rust-analyzer.linkedProjects": [
+    "./Cargo.toml",
+    "services/prediction-api/Cargo.toml"
+  ],
+  "rust-analyzer.checkOnSave": true,
+
+
+
+
 }

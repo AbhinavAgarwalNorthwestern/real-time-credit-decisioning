@@ -220,4 +220,14 @@ anthropic.env
 # direnv
 .env.local
 
+# K8s manifests holding live credentials (commit the .example template instead)
+deployments/**/mlflow-minio-secret.yaml
+deployments/**/*-secret.yaml
+!deployments/**/*-secret.yaml.example
+
+# Local cluster credentials — never commit
+key
+key.pub
+kubeconfig
+
 *.pyc
