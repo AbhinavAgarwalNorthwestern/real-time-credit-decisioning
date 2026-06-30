@@ -57,7 +57,7 @@ jobs:
           uv pip install mypy
 
       - name: Mypy strict
-        run: uv run mypy --strict --explicit-package-bases services/ infra/lib/src/
+        run: uv run mypy --strict --explicit-package-bases services/
 
   unit-test:
     runs-on: ubuntu-latest

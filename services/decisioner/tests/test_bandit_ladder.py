@@ -142,7 +142,9 @@ def test_simulate_returns_complete_result_dataclass() -> None:
     assert isinstance(result, BanditSimulationResult)
     assert result.policy_name == 'test'
     assert result.cumulative_reward > 0
-    assert result.cumulative_regret >= -10.0  # stochastic rewards can cause slight negative regret
+    assert (
+        result.cumulative_regret >= -10.0
+    )  # stochastic rewards can cause slight negative regret
     assert abs(result.average_reward - result.cumulative_reward / 200) < 1e-9
     assert sum(result.n_pulls_per_arm) == 200
 
