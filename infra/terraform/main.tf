@@ -11,11 +11,15 @@
 # `deployments/overlays/aws-eks/` and apply via `kubectl apply -k`.
 
 terraform {
-  backend "s3" {
-    bucket = "rtcd-terraform-state"
-    key    = "infra/terraform.tfstate"
-    region = "ap-south-1"
-  }
+  # Local state for dev (one-day cluster, torn down end of session).
+  # For production: uncomment the S3 backend below and create the
+  # bucket manually with versioning + encryption before `terraform init`.
+  #
+  # backend "s3" {
+  #   bucket = "rtcd-terraform-state"
+  #   key    = "infra/terraform.tfstate"
+  #   region = "ap-south-1"
+  # }
 }
 
 module "vpc" {

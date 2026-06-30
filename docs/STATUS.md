@@ -9,34 +9,88 @@ file.
 
 ## Current phase
 
-**v1.1.0 IN-FLIGHT (2026-06-30) — code complete; final cluster apply pending.**
+**v2.0.0 IN-FLIGHT (end of 2026-06-30) — cluster validation 95% complete; training Job run + tag deferred to next session.**
+
+For the deferred-validation tag plan + concrete next-session steps see
+`docs/SESSION_PROMPT_2026-07-01.md`.
 
 **State summary:**
 - Original 7-day FAANG-hardened build (v1.0.0): COMPLETE
 - Customer attributes (5 new fields end-to-end Steps 1-9): COMPLETE
-- **18-item scope expansion (Phases A-I per `docs/scope_expansion_plan.md`):**
+- **21-item scope expansion (Phases A-I + new K, L, J per `scope_expansion_plan.md`):**
   - **Code level: 17 of 21 sub-items SHIPPED** (~30 files, ~210 tests, ~16 libraries)
-  - **Cluster level: pending** — single chained command to ship v1.1.0
-- Tag `v1.1.0` is the next git milestone
+  - **AWS cluster validation: 95%** — data plane proven (see below)
+- v1.1.0 SKIPPED — went directly to v2.0.0 push per user decision
+- Tag `v2.0.0` is the next git milestone (deferred from this session)
 
-**What's blocking ship**: one cluster-apply pipeline (rebuild producer image →
-DROP SOURCE CASCADE → apply_ddl.sh → train → tag). All code is ready; the
-cluster work is straightforward but takes 25-30 min real time.
+**AWS dev EKS cluster state (end of 2026-06-30):**
+- EKS cluster `real-time-ml-prod` ACTIVE, EKS 1.30, ap-south-1
+- Node group: m6i.large × 5 desired (was 7 with CA scale-up; reset by Terraform)
+- **Disk fix in progress at session end** — `block_device_mappings` change
+  brings root volume 20 → 100 GiB (rolling update background task `b5l3omzdj`)
+- Cluster Autoscaler: installed + IRSA + ASG-tagged + working
+- 6 ECR images published with tag `v2.0.0-rc4`
+- Kafka broker (Strimzi) + topics: transactions, decisions, outcomes, drift-events
+- RW full stack + 10 MVs applied with 5 customer-attribute columns
+- MLflow tracking server: running (no models registered yet)
+- 5 application services Deployed:
+  - decisioner: 4 pods 0/1 (waiting on MLflow champion — expected)
+  - drift-monitor: 3 Running
+  - outcome-collector: 1 Running
+  - shap-consumer: 1 Running
+  - transactions producer: scaled to 0 (intentional, prevent backfill race)
+- **Data plane PROVEN end-to-end**:
+  - 41,413 events emitted by producer → Kafka topic transactions
+  - RW source consumed → events_enriched MV (41,413 rows)
+  - Window aggregation → customer_attributes + behavioral_features_serving
+    (929 customers tracked, all 5 customer-attribute fields populated)
 
-**State of the cluster (as of 2026-06-30 end of session):**
-- Producer deployment scaled to 0 (intentional during the failed v1.1.0
-  attempts; do NOT scale back to 1 until backfill+training complete)
-- Kafka `transactions` topic was flushed mid-session; was re-applied with
-  `scan.startup.mode = 'latest'`
-- RW MVs partially populated from a killed 7-day backfill (~800k events
-  spanning 2.5h, CV=0.79, 1000 customers seen). This data should be
-  dropped — full reset needed before v1.1.0 (see "Immediate next action")
-- MinIO request cap is set to 10000 (was the 114 default; raised via
-  `kubectl set env`); MUST be verified-still-set before next apply
-- The 5-customer-attribute fields (credit_score, annual_income,
-  account_tenure_months, n_products, prev_delinquency_count) flow end-to-end:
-  producer → Kafka → RW source (18 cols) → customer_attributes MV (per-
-  customer rows) → behavioral_features_serving (26 feature columns + 5 freshness)
+**Uncommitted work at session end** (needs commit before tag):
+- `infra/terraform/modules/eks_cluster/main.tf` — block_device_mappings 100GB
+- `infra/terraform/main.tf` — local backend (for dev EKS)
+- `.github/workflows/ci.yml` — fires on abhinav/** branches; explicit dev tool install
+- `.github/workflows/cd.yml` — repo-root build context (was committed v2.0.0-rc2)
+- 5 Dockerfiles with `services/<svc>/` prefixed COPY paths
+- `services/retraining_flow/Dockerfile` — includes transactions package
+- `deployments/base/services-finance/decisioner/{hpa,pdb}.yaml` (NEW)
+- `deployments/overlays/aws-eks/decisioner-ingress.yaml` (NEW)
+- `services/transactions/src/transactions/outcome_simulator.py` (NEW, Phase L-34)
+- `services/transactions/tests/test_outcome_simulator.py` (NEW, 17 tests)
+- `docs/AWS_DEPLOYMENT.md` (NEW)
+- `docs/SESSION_ERRORS_2026-06-30.md` (NEW, 24 documented issues)
+- `docs/decisions/013-dev-vs-aws-validation-split.md` (NEW)
+- `docs/scope_expansion_plan.md` — Phases J + K + L added
+- `docs/architecture_diagrams.md` — D6 AWS deployment diagram added
+- `docs/decisions/README.md` — ADR 013 index updated
+- `docs/STATUS.md` — this update
+
+**What's actually blocking v2.0.0 tag** (deferred to next session):
+1. **Training Job successful run** — requires the 100 GiB disk fix to land
+   (background terraform apply); blocked by node ephemeral evictions today
+2. **CI green** — first CI run on `abhinav/**` failed because dev tools
+   not installed; fix is in ci.yml (uncommitted)
+3. **Decisioner Ready** — auto-recovers once MLflow has a champion model
+4. **k6 smoke test** — quick in-cluster Job against decisioner LB
+
+**What's been definitively proven on AWS today** (interview material):
+- EKS provisioned via Terraform from scratch in 32 min
+- Cluster Autoscaler operationally validated (scaled 5→7 nodes when
+  training Job needed disk; see incidents 5.5 + 5.6 in `SESSION_ERRORS_2026-06-30.md`)
+- IRSA for cluster-autoscaler + EBS CSI driver + GitHub OIDC for CD
+- EBS CSI driver provisioned PVs for Strimzi Kafka + RW Postgres + MinIO
+- Rolling node update via Terraform completed cleanly (Kafka + RW + MLflow
+  pods drained + rescheduled with no data loss)
+- 6 service images built via GitHub Actions and pushed to ECR via OIDC
+- Streaming pipeline ran end-to-end on EKS: producer → Kafka → RW MVs
+  (41k events, 10 MVs, 929 customers, all 5 customer attributes)
+
+**Recovery cost** if cluster torn down before resume:
+- Re-apply Terraform: 32 min
+- Apply IAM access entries + EBS CSI IRSA + CA install: 15 min
+- Install Strimzi + RW + MLflow + topics + DDL: 25 min
+- Total cluster rebuild: ~75 min
+- Recommend: leave cluster up overnight if resuming tomorrow (~$16);
+  destroy if gap > 2 days (re-provision cost amortizes).
 
 ---
 

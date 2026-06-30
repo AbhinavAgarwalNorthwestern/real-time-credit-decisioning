@@ -41,10 +41,41 @@ module "eks" {
 
   eks_managed_node_groups = {
     default = {
+      # 5 m6i.large for v1.1.0 cluster validation: headroom for all 11
+      # services + Strimzi Kafka + RisingWave + MLflow + Postgres.
+      # 5 nodes = 40 GB RAM total.
+      #
+      # disk_size = 100 GiB (default would be 20 GiB). 100 GiB is sized
+      # for: cached container images for all 11 services (~20 GB) +
+      # workload ephemeral storage during training Jobs (5 GB scratch +
+      # parquet outputs + model artifacts) + headroom above the kubelet
+      # eviction threshold. 20 GiB nodes evict training pods during
+      # image pull; documented in `docs/SESSION_ERRORS_2026-06-30.md`.
       instance_types = ["m6i.large"]
-      min_size       = 2
-      max_size       = 6
-      desired_size   = 3
+      min_size       = 3
+      max_size       = 8
+      desired_size   = 5
+
+      # block_device_mappings is required for the terraform-aws-modules/eks
+      # v20 launch template to honor a custom root volume size. The
+      # top-level `disk_size` attribute is IGNORED when a launch template
+      # is generated, which is what this module does by default.
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 100
+            volume_type           = "gp3"
+            encrypted             = true
+            delete_on_termination = true
+          }
+        }
+      }
+
+      # Allow rolling update with minimal disruption to running workloads.
+      update_config = {
+        max_unavailable_percentage = 33
+      }
 
       labels = {
         Environment = var.environment

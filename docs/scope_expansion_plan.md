@@ -133,6 +133,175 @@ just before, the bias monitor has the right inputs to be meaningful.
 | 20 | **2B Cost attribution / FinOps** | `infra/terraform/modules/tagging/` (every resource tagged with `cost-center`, `model-name`, `environment`). OpenCost / Kubecost compatible. Cost-allocation doc in `docs/FINOPS.md`. |
 | 21 | **2C Feature store backfill API + close live/backfill gap** | Two deliverables: (1) `services/training_flow/src/training_flow/backfill_feature.py` — recompute one feature from event history under a new version; backfill MV from a checkpoint. (2) **Close the ~15-min live/backfill gap from v1.1.0** by splitting `transactions` topic into `transactions-historical` (replay batches, chronological writes) + `transactions-live` (continuous producer). Two RW sources, `UNION ALL` in `events_enriched` MV. Watermarks track independently per source. This is the production architecture; documented in `docs/scope_expansion_plan.md` as the proper fix for the v1.1.0 known limitation. |
 
+### Phase K: 5k+ RPS load test with SLO compliance evidence — added 2026-06-30 (FAANG-undeniable demo 1)
+
+**Goal**: produce a 5k+ RPS sustained load test report with documented SLO
+compliance, recorded as a screen-capture demo. This becomes a concrete
+interview hook to land L5/L6 ML eng roles.
+
+**What an interviewer sees** (10-minute walkthrough):
+
+- A Grafana dashboard with **p50 / p95 / p99 latency** during a 30-minute
+  sustained 5,000 RPS run against the decisioner
+- **Error rate < 0.1%**
+- **Throughput stays above 5,000 RPS** even during a 200% spike
+- A **k6 summary report** exported as JSON
+- A **terraform-managed cluster** that scaled up + down (cost report)
+- A **written incident** documenting one failure mode discovered during
+  the test (real prod load tests always surface at least one)
+
+**Items**:
+
+| # | Item | Lands at |
+|---|------|----------|
+| 22 | Scale node group to 10× m6i.xlarge (40 vCPU, 160 GB RAM) | `infra/terraform/modules/eks_cluster/main.tf` — temporary edit, tear-down after |
+| 23 | Install Prometheus + Grafana stack via in-cluster Helm Job | `deployments/dev/eks/install_observability_job.yaml` |
+| 24 | Apply decisioner Grafana dashboard configmap + Grafana sidecar | `dashboards/decisioner.json` (already exists) |
+| 25 | Wire decisioner HPA: min=3, max=20, target CPU 60% | `deployments/base/services-finance/decisioner/hpa.yaml` (NEW) |
+| 26 | Decisioner PodDisruptionBudget: minAvailable=2 | `deployments/base/services-finance/decisioner/pdb.yaml` (NEW) |
+| 27 | Decisioner resource tuning: 1 CPU / 2 Gi requests | edit `deployments/base/services-finance/decisioner/deployment.yaml` |
+| 28 | RW compute scale to 3 via Helm values | `--set compute.replicas=3` in install job |
+| 29 | ALB ingress for decisioner via AWS Load Balancer Controller | `deployments/overlays/aws-eks/decisioner-alb.yaml` (NEW) |
+| 30 | External k6 driver on a separate EC2 instance (m5.xlarge) | `scripts/run_load_test_aws.sh` (NEW) |
+| 31 | Modified k6 stages (1k→2.5k→5k→7.5k→cool) | edit `scripts/load_test.js` |
+| 32 | Grafana dashboard PNG exports + JSON report | `docs/LOAD_TEST_RESULTS.md` (replace stub) |
+| 33 | Recorded 5-min screen capture of the run | `docs/demos/load_test_v2.0.1.mp4` |
+
+**Effort**: ~3 sessions. **Cost**: ~$45 total across 3 sessions
+(scaled-up cluster + ~6h k6 driver + Grafana export). **Tag**: `v2.0.1`
+(load-test verified).
+
+**Realistic SLO targets** at 5k RPS sustained:
+
+| Metric | Target | Why credible |
+|---|---|---|
+| p50 latency | < 15 ms | v1.0.0 warm = 7 ms; at 10× load expect 2x |
+| p95 latency | < 30 ms | Standard ML serving target |
+| **p99 latency** | **< 50 ms** | **Headline number for the demo** |
+| Error rate | < 0.1% | Circuit breaker + retry handles |
+| Throughput floor | 5,000 RPS | Whole point of the test |
+| RW feature lookup p99 | < 10 ms | Hummock cache + connection pool |
+
+If we miss any → equally good interview material: "we found this
+bottleneck, here's how we'd fix it."
+
+---
+
+### Phase L: Bandit A/B test with statistical lift validation — added 2026-06-30 (FAANG-undeniable demo 2)
+
+**Goal**: produce a statistically-rigorous A/B test report demonstrating
+that the bandit policy can be evaluated against a challenger on real
+synthetic traffic with bootstrap CI on lift. Recorded as a 15-minute
+walkthrough.
+
+**What an interviewer sees**:
+
+- Decisioner running with **25% canary** to a challenger bandit
+  (softmax → ε-greedy → LinUCB)
+- **24h of synthetic traffic** with simulated outcomes (so realized
+  rewards exist)
+- **Statistical lift report**: bootstrap 95% CI on
+  `(challenger_profit / champion_profit - 1) × 100%`
+- **Per-segment lift breakdown** (which segments the challenger wins on)
+- A **decision**: ship-all / ship-some / rollback, grounded in numbers
+- The whole thing **reproducible**: `make ab-test` re-runs end-to-end
+
+**Items**:
+
+| # | Item | Lands at |
+|---|------|----------|
+| 34 | NEW `outcome_simulator.py` — consumes `decisions` topic, uses customer ground-truth params to simulate realized response, emits to `outcomes` topic | `services/transactions/src/transactions/outcome_simulator.py` |
+| 35 | Wire `outcome_collector` to join decisions + outcomes by decision_id in RW | `services/outcome_collector/src/outcome_collector/collector.py` (extend existing) |
+| 36 | NEW RW MV `decision_outcomes` — joins decisions + outcomes; includes alias, segment, true_profit, predicted_uplift | `deployments/dev/risingwave/10_mv_decision_outcomes.sql` (NEW) |
+| 37 | Unit tests for outcome_simulator | `services/transactions/tests/test_outcome_simulator.py` (NEW) |
+| 38 | Train a challenger model (e.g., monotonic-GBM variant) via MLflow | `services/training_flow/src/training_flow/__main__.py --variant monotonic_gbm` (extend) |
+| 39 | Set canary fraction to 25% via existing admin route | `curl POST /admin/canary -d '{"fraction": 0.25}'` |
+| 40 | Run synthetic traffic at 200 RPS for 12h (modified k6 sustained) | `scripts/sustained_load.js` (NEW) |
+| 41 | NEW notebook `notebooks/03_ab_test_analysis.ipynb` — pulls decision_outcomes MV, computes champion vs challenger profit by segment, bootstrap 1000x for 95% CI on lift, calibration plot | `notebooks/03_ab_test_analysis.ipynb` (NEW) |
+| 42 | Welch's t-test + bootstrap CI; reject H0 if CI excludes 0 | analyzed in 03 notebook |
+| 43 | NEW `docs/AB_TEST_REPORT_v2.0.2.md` — ship-all / ship-some / rollback decision with statistical justification | `docs/AB_TEST_REPORT_v2.0.2.md` (NEW) |
+| 44 | Recorded 7-min screen capture | `docs/demos/ab_test_v2.0.2.mp4` |
+
+**Effort**: ~3 sessions. **Cost**: ~$30 total (smaller cluster than load
+test; 14h sustained). **Tag**: `v2.0.2` (A/B verified).
+
+**Punchline pattern**:
+
+> "Challenger model showed +X% profit lift (95% CI: +A% to +B%) on
+> segment 0 — statistically significant. On segments 4 & 5
+> (high-risk-new), lift was -Y% — challenger should NOT be promoted
+> there. Decision: ship to segments 0-3 only via per-segment canary."
+
+That answer demonstrates ML production discipline beyond "I trained a
+model" — and is the exact reasoning pattern FAANG ML interviewers want
+to hear.
+
+---
+
+### Phase J: Batch ingestion plane (PySpark on EMR / Glue) — added 2026-06-30
+
+**Authored at v2.0.0 cluster validation session** after the user asked about
+PySpark for pulling data from RDBMS at the ingestion stage. Real production
+systems run a real-time + batch hybrid; we have the real-time plane (Kafka
+→ RisingWave) but no batch plane yet. Phase J adds it.
+
+**Architectural pattern**:
+
+```
+External RDBMS (credit bureau, customer master, RBI data)
+        │
+        ▼
+PySpark on EMR Serverless / AWS Glue (triggered by Step Functions cron)
+        │
+        ▼
+S3 parquet (raw → curated, partitioned by date)
+        │
+        ├──► Online feature store (DynamoDB or RisingWave batch-load)
+        │
+        └──► Training pipeline reads OFFLINE features for model fit
+                ↓
+        Feature schema versioned, point-in-time joins enforced
+
+Real-time path stays unchanged: producer → Kafka → RW → MVs → decisioner
+```
+
+**Items** (a Phase J retrospective on top of the existing 21):
+
+| # | Item | Lands at |
+|---|------|----------|
+| 22 | **EMR Serverless module + PySpark job template** | `infra/terraform/modules/emr_serverless/` + `services/batch_ingest/` |
+| 23 | **Glue Data Catalog setup** | `infra/terraform/modules/glue/` |
+| 24 | **JDBC ingestion job** (sample: pull from a fake "credit_bureau" Postgres into S3 parquet daily) | `services/batch_ingest/src/batch_ingest/jdbc_to_s3.py` |
+| 25 | **Step Functions orchestrator** for cron-triggered batch jobs | `infra/terraform/modules/step_functions/` |
+| 26 | **Offline feature loader in training_flow** — joins online (RW snapshot) + offline (S3 parquet) at training time with point-in-time correctness | `services/training_flow/src/training_flow/offline_feature_loader.py` |
+| 27 | **Feature freshness metrics** (offline / online age + drift) — wired into existing bias/drift monitor | `services/drift_monitor/src/drift_monitor/freshness.py` |
+
+**Why batch + streaming both, not one or the other**:
+
+- RisingWave: 5-min / 1h / 24h windows — *online* features. Sub-second
+  read at inference time.
+- PySpark / S3: 90-day / 180-day / monthly snapshots — *offline*
+  features. Cheaper at large scale, easier to backfill historical data,
+  better fit for slow-changing dimensions (credit score, employment
+  status, demographic data).
+- A typical model uses BOTH at training time + online features only at
+  inference. The "real-time decision" property is preserved because
+  inference doesn't depend on offline features being fresh.
+
+**Production cost expectation**:
+
+- EMR Serverless: pay-per-job. A daily batch run scanning 10 GB of
+  source data costs ~$0.20-0.50.
+- Glue Catalog: free up to 1M tables.
+- S3: ~$0.023/GB/month for standard tier.
+- For our cohort_size = 1000 customers × 30 days backfill × 5 KB/event:
+  ~150 MB of parquet, ~$0.01/month. Negligible.
+
+**Tag mapping**: Phase J completes as v2.1.0 (after v2.0.0 ships). New
+versioning: v2.0.0 = streaming complete; v2.1.0 = batch added.
+
+---
+
 ## Out of scope (deliberately deferred to separate projects)
 
 | Concern | Why deferred |
