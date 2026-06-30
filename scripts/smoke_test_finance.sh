@@ -3,9 +3,9 @@
 #
 # Phase 1 (Day 1): infrastructure health checks — Kafka, RisingWave, MLflow,
 #                  and the credit-decisioning namespace are reachable and Ready.
-# Phase 2 (Day 1 close): synthetic transaction event flows through Kafka
-#                        and lands as a row in the behavioral_features
-#                        materialized view in RisingWave.
+# Phase 2 (Day 1 close): synthetic transaction events flow through Kafka
+#                        and land as rows in the RisingWave materialized views
+#                        (per ADR 009 — no Python behavioral_features service).
 # Phase 3 (Day 3+): full /decide → audit log → outcome round-trip.
 #
 # Exit codes:
@@ -28,6 +28,9 @@ NS_FINANCE="${NS_FINANCE:-real-time-ml}"
 
 # How long to wait for any single pod to become Ready before failing.
 POD_READY_TIMEOUT="${POD_READY_TIMEOUT:-180s}"
+
+# How long to wait for data to flow through (producer → Kafka → RW MV).
+DATA_FLOW_TIMEOUT="${DATA_FLOW_TIMEOUT:-60}"
 
 # Phase the test will run up to. Override with PHASE=1 / 2 / 3.
 PHASE="${PHASE:-2}"
@@ -67,18 +70,6 @@ require_pod_ready() {
     ok "$what Ready in ns '$ns'"
 }
 
-# Confirm an HTTP endpoint responds 2xx within ~10s.
-require_http_ok() {
-    local url="$1" what="$2"
-    local code
-    code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || echo "000")"
-    if [[ "$code" =~ ^2 ]]; then
-        ok "$what HTTP $code"
-    else
-        fail "$what HTTP $code (url: $url)" 1
-    fi
-}
-
 # Count rows in a RisingWave table/view (Postgres protocol).
 rw_count() {
     local relation="$1"
@@ -91,6 +82,23 @@ rw_count() {
         || echo "QUERY_FAILED"
 }
 
+# Check Kafka topic has messages by summing the latest offsets across partitions.
+# Uses the modern kafka-get-offsets.sh wrapper + --bootstrap-server (the
+# Kafka 3.x `kafka-run-class.sh kafka.tools.GetOffsetShell --broker-list`
+# form was removed in Kafka 4.x; cluster runs 4.1.2 per INFRASTRUCTURE.md).
+kafka_topic_has_messages() {
+    local topic="$1"
+    local offsets
+    offsets=$(kubectl -n "$NS_KAFKA" exec kafka-e11b-dual-role-0 -c kafka -- \
+        /opt/kafka/bin/kafka-get-offsets.sh \
+        --bootstrap-server localhost:9092 \
+        --topic "$topic" | awk -F: '{sum += $3} END {print sum}')
+    if [[ -z "$offsets" ]] || [[ "$offsets" == "0" ]]; then
+        return 1
+    fi
+    return 0
+}
+
 # ---------------------------------------------------------------------------
 # Phase 1 — infrastructure
 # ---------------------------------------------------------------------------
@@ -101,35 +109,62 @@ phase_1() {
     require_ns "$NS_RISINGWAVE"
     require_ns "$NS_MLFLOW"
 
-    require_pod_ready "$NS_KAFKA"      "strimzi.io/cluster=kafka-e11b"      "Kafka broker"
-    require_pod_ready "$NS_RISINGWAVE" "app.kubernetes.io/component=frontend" "RisingWave frontend"
-    require_pod_ready "$NS_RISINGWAVE" "app=minio"                          "MinIO"
-    require_pod_ready "$NS_MLFLOW"     "app=mlflow"                          "MLflow tracking server"
+    require_pod_ready "$NS_KAFKA"      "strimzi.io/cluster=kafka-e11b"   "Kafka broker"
+    require_pod_ready "$NS_RISINGWAVE" "risingwave/component=frontend"   "RisingWave frontend"
+    require_pod_ready "$NS_RISINGWAVE" "app.kubernetes.io/name=minio"   "MinIO"
+    require_pod_ready "$NS_MLFLOW"     "app=mlflow"                      "MLflow tracking server"
 
     ok "Phase 1 passed"
 }
 
 # ---------------------------------------------------------------------------
-# Phase 2 — finance services up and the data path works
+# Phase 2 — transactions producer + data path to RisingWave MVs
 # ---------------------------------------------------------------------------
 phase_2() {
-    step "Phase 2: finance services + behavioral-features data path"
+    step "Phase 2: transactions producer + data path (per ADR 009)"
 
     require_ns "$NS_FINANCE"
-    require_pod_ready "$NS_FINANCE" "app=transactions"          "transactions producer"
-    require_pod_ready "$NS_FINANCE" "app=behavioral-features"   "behavioral_features transformer"
 
-    step "Checking behavioral_features materialized view in RisingWave"
-    local result
-    result="$(rw_count "behavioral_features")"
-    if [[ "$result" == "QUERY_FAILED" ]]; then
-        fail "RisingWave query failed — is psql installed and RW reachable?" 3
-    fi
-    if [[ "$result" -gt 0 ]]; then
-        ok "behavioral_features has $result row(s)"
-    else
-        fail "behavioral_features has 0 rows — synthetic stream → MV path not flowing" 3
-    fi
+    # Check transactions producer pod is Running
+    require_pod_ready "$NS_FINANCE" "app.kubernetes.io/name=transactions" "transactions producer"
+
+    # Wait for events to appear in the Kafka transactions topic
+    step "Checking Kafka 'transactions' topic has messages"
+    local elapsed=0
+    while ! kafka_topic_has_messages "transactions"; do
+        elapsed=$((elapsed + 5))
+        if [[ $elapsed -ge $DATA_FLOW_TIMEOUT ]]; then
+            fail "No messages in 'transactions' topic after ${DATA_FLOW_TIMEOUT}s — producer may not be emitting" 3
+        fi
+        printf "    Waiting for messages (%ds / %ds)...\n" "$elapsed" "$DATA_FLOW_TIMEOUT"
+        sleep 5
+    done
+    ok "Kafka 'transactions' topic has messages"
+
+    # Check RisingWave source is consuming. The DDL creates two MVs:
+    # `behavioral_features_5m` (the tumbling-window aggregate) and
+    # `behavioral_features_latest` (a derived snapshot). We check the
+    # tumbling MV — it's the source of truth and `_latest` depends on it.
+    step "Checking RisingWave behavioral_features_5m MV"
+    elapsed=0
+    while true; do
+        local result
+        result="$(rw_count "behavioral_features_5m")"
+        if [[ "$result" == "QUERY_FAILED" ]]; then
+            if [[ $elapsed -ge $DATA_FLOW_TIMEOUT ]]; then
+                fail "RisingWave query failed — is psql installed and RW reachable? Did you apply DDL via deployments/dev/risingwave/apply_ddl.sh?" 3
+            fi
+        elif [[ "$result" -gt 0 ]]; then
+            ok "behavioral_features_5m MV has $result row(s)"
+            break
+        fi
+        elapsed=$((elapsed + 5))
+        if [[ $elapsed -ge $DATA_FLOW_TIMEOUT ]]; then
+            fail "behavioral_features_5m has 0 rows after ${DATA_FLOW_TIMEOUT}s — MV not computing (windows may not have closed yet; watermark = event_time - 10s, tumble = 5 min)" 3
+        fi
+        printf "    Waiting for MV rows (%ds / %ds)...\n" "$elapsed" "$DATA_FLOW_TIMEOUT"
+        sleep 5
+    done
 
     ok "Phase 2 passed"
 }

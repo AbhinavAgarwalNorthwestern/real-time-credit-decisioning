@@ -1,8 +1,17 @@
 # ADR 004: Monolithic decisioner on the request path; microservices on the streaming and batch planes
 
-**Status:** Accepted
+**Status:** Superseded by [ADR 008](008-python-fastapi-decisioner-supersedes-rust.md) on 2026-06-05
+**Original status:** Accepted
 **Date:** 2026-06-03
 **Decision makers:** Platform owner
+
+> **Supersession note**: the *architectural* decision in this ADR — collapse
+> the request path into a single in-process service rather than decomposing
+> it across Kafka hops — **still holds**. What changed is the
+> *implementation language* (Rust → Python+FastAPI). See ADR 008 for the
+> language pivot rationale; the latency budget and three-plane decomposition
+> remain authoritative. ADR bodies are immutable per convention; this
+> note is the only modification.
 
 ## Context
 

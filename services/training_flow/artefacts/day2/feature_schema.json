@@ -1,0 +1,12 @@
+{
+  "feature_cols": [
+    "velocity_5m",
+    "total_spend_5m",
+    "avg_spend_5m",
+    "utilization",
+    "velocity_1h",
+    "total_spend_1h",
+    "avg_spend_1h",
+    "mcc_entropy_1h"
+  ]
+}

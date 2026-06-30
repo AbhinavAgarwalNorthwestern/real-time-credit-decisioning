@@ -1,0 +1,87 @@
+# Kafka topics for the credit-decisioning platform.
+#
+# Strimzi's KafkaTopic CR makes topic management declarative: apply this
+# manifest and the entity-operator reconciles the topics on the broker.
+# Re-apply is idempotent.
+#
+# All topics in this dev cluster use replication-factor 1 (single broker)
+# and 3 partitions (enough for small-scale parallelism without inflating
+# state-store size in Quixstreams or RisingWave).
+
+---
+# Day 1 — synthetic transaction event stream
+# Producer: services/transactions
+# Consumer: RisingWave Source 'transactions' (per ADR 009)
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: transactions
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-e11b
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 604800000      # 7 days — enough to replay for Day 6 OPE backtests
+    cleanup.policy: delete
+
+---
+# Day 3 — decisioner audit log
+# Producer: services/decisioner (per ADR 008)
+# Consumer: services/outcome_collector (Day 6), reg-compliance batch (Day 7)
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: decisions
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-e11b
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 2592000000     # 30 days — required for adverse-action audit
+    cleanup.policy: delete
+
+---
+# Day 6 — outcome events (CLI accepted? fraud confirmed? customer churned?)
+# Producer: external systems (synthetic in our case)
+# Consumer: services/outcome_collector
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: outcomes
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-e11b
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 2592000000     # 30 days
+    cleanup.policy: delete
+
+---
+# Day 5 — drift detector signals
+# Producer: services/drift_monitor (PSI/KS/ADWIN events)
+# Consumer: Argo Events sensor → triggers services/retraining_flow
+#
+# NOTE on naming: Kubernetes resource names cannot contain underscores
+# (RFC 1123: lowercase + alphanumeric + hyphens only). The Kafka topic on
+# the broker IS allowed underscores, but we use hyphens consistently here
+# to keep the CR name and broker topic name identical — less cognitive
+# overhead than tracking two names for one stream.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: drift-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-e11b
+spec:
+  partitions: 1                  # single partition — strict ordering of drift events
+  replicas: 1
+  config:
+    retention.ms: 2592000000     # 30 days
+    cleanup.policy: delete

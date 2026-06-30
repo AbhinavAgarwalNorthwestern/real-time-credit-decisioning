@@ -19,11 +19,12 @@ resources:
 
   # Finance-domain services (per ADR 004 decomposition).
   # Added as each service ships its manifests.
-  # - services-finance/transactions/
+  - services-finance/transactions/
   # - services-finance/behavioral_features/
-  # - services-finance/decisioner/
-  # - services-finance/drift_monitor/
-  # - services-finance/outcome_collector/
+  - services-finance/decisioner/
+  - services-finance/drift-monitor/
+  - services-finance/outcome-collector/
+  - services-finance/shap-consumer/
 
   # Crypto-domain services (migration from deployments/dev/<service>/ progressive).
   # - services-crypto/trades/

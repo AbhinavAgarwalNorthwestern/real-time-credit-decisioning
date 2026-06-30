@@ -11,19 +11,22 @@ resources:
 # in CI.
 images:
   - name: decisioner
-    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/decisioner
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/realtime-credit/decisioner
     newTag: v1.0.0
   - name: transactions
-    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/transactions
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/realtime-credit/transactions
     newTag: v1.0.0
-  - name: behavioral_features
-    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/behavioral_features
+  - name: drift-monitor
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/realtime-credit/drift-monitor
     newTag: v1.0.0
-  - name: drift_monitor
-    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/drift_monitor
+  - name: outcome-collector
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/realtime-credit/outcome-collector
     newTag: v1.0.0
-  - name: outcome_collector
-    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/outcome_collector
+  - name: shap-consumer
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/realtime-credit/shap-consumer
+    newTag: v1.0.0
+  - name: retraining-flow
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/realtime-credit/retraining-flow
     newTag: v1.0.0
 
 # Production-scale patches.

@@ -1,0 +1,139 @@
+name: cd
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ap-south-1
+  EKS_CLUSTER: real-time-ml-prod
+  ECR_PREFIX: realtime-credit
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - decisioner
+          - drift-monitor
+          - outcome-collector
+          - shap-consumer
+          - retraining-flow
+          - transactions
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_CD_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve service directory
+        id: svc
+        run: |
+          dir=$(echo "${{ matrix.service }}" | tr '-' '_')
+          echo "dir=services/${dir}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        run: |
+          TAG="${{ github.ref_name }}"
+          IMAGE="${{ steps.ecr.outputs.registry }}/${{ env.ECR_PREFIX }}/${{ matrix.service }}:${TAG}"
+          IMAGE_LATEST="${{ steps.ecr.outputs.registry }}/${{ env.ECR_PREFIX }}/${{ matrix.service }}:latest"
+          docker build -t "${IMAGE}" -t "${IMAGE_LATEST}" "${{ steps.svc.outputs.dir }}"
+          docker push "${IMAGE}"
+          docker push "${IMAGE_LATEST}"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_CD_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-deploy
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Patch overlay image tags
+        run: |
+          TAG="${{ github.ref_name }}"
+          REGISTRY="${{ steps.ecr-deploy.outputs.registry }}"
+          OVERLAY=deployments/overlays/aws-eks/kustomization.yaml
+          sed -i "s|AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com|${REGISTRY}|g" "$OVERLAY"
+          sed -i "s|newTag: v1.0.0|newTag: ${TAG}|g" "$OVERLAY"
+
+      - name: Deploy via Kustomize
+        run: kubectl apply -k deployments/overlays/aws-eks/
+
+      - name: Wait for rollout
+        run: |
+          for svc in decisioner drift-monitor outcome-collector shap-consumer transactions; do
+            kubectl -n real-time-ml rollout status deployment/${svc} --timeout=300s
+          done
+
+  load-test:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D68
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install -y k6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_CD_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Wait for LoadBalancer and get URL
+        id: url
+        run: |
+          for i in $(seq 1 30); do
+            URL=$(kubectl -n real-time-ml get svc decisioner \
+              -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)
+            if [ -n "$URL" ]; then
+              echo "url=http://${URL}:8080" >> "$GITHUB_OUTPUT"
+              echo "LoadBalancer ready: ${URL}"
+              exit 0
+            fi
+            echo "Waiting for LoadBalancer... (${i}/30)"
+            sleep 10
+          done
+          echo "::error::LoadBalancer not ready after 5 minutes"
+          exit 1
+
+      - name: Run k6 load test
+        run: k6 run scripts/load_test.js --env BASE_URL=${{ steps.url.outputs.url }}

@@ -1,0 +1,153 @@
+{
+  "dashboard": {
+    "title": "Credit Decisioner — Production",
+    "uid": "rtcd-decisioner-v1",
+    "timezone": "utc",
+    "refresh": "10s",
+    "time": { "from": "now-1h", "to": "now" },
+    "panels": [
+      {
+        "title": "Request Rate (req/s)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [{
+          "expr": "rate(http_requests_total{handler=\"/decide\"}[1m])",
+          "legendFormat": "{{pod}}"
+        }]
+      },
+      {
+        "title": "p50 / p99 Latency (ms)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{handler=\"/decide\"}[1m])) * 1000",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{handler=\"/decide\"}[1m])) * 1000",
+            "legendFormat": "p99"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 30 },
+                { "color": "red", "value": 50 }
+              ]
+            },
+            "unit": "ms"
+          }
+        }
+      },
+      {
+        "title": "Error Rate (%)",
+        "type": "stat",
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+        "targets": [{
+          "expr": "sum(rate(http_requests_total{handler=\"/decide\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{handler=\"/decide\"}[5m])) * 100",
+          "legendFormat": "error %"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "title": "Canary Fraction",
+        "type": "gauge",
+        "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+        "targets": [{
+          "expr": "decisioner_canary_fraction",
+          "legendFormat": "canary %"
+        }],
+        "fieldConfig": {
+          "defaults": { "min": 0, "max": 1, "unit": "percentunit" }
+        }
+      },
+      {
+        "title": "Champion vs Challenger Profit (rolling 5m mean)",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+        "targets": [
+          {
+            "expr": "avg_over_time(decisioner_decision_profit{alias=\"champion\"}[5m])",
+            "legendFormat": "champion"
+          },
+          {
+            "expr": "avg_over_time(decisioner_decision_profit{alias=\"challenger\"}[5m])",
+            "legendFormat": "challenger"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": { "unit": "currencyUSD" }
+        }
+      },
+      {
+        "title": "Action Distribution",
+        "type": "piechart",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+        "targets": [{
+          "expr": "sum by (action) (increase(decisioner_actions_total[5m]))",
+          "legendFormat": "{{action}}"
+        }]
+      },
+      {
+        "title": "Drift Detector Signals",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+        "targets": [{
+          "expr": "increase(drift_monitor_signals_total[5m])",
+          "legendFormat": "{{detector}} — {{feature}}"
+        }]
+      },
+      {
+        "title": "Adverse Action Denials / min",
+        "type": "stat",
+        "gridPos": { "h": 4, "w": 6, "x": 12, "y": 20 },
+        "targets": [{
+          "expr": "sum(rate(decisioner_actions_total{action=\"NOTHING\"}[5m])) * 60",
+          "legendFormat": "denials/min"
+        }]
+      },
+      {
+        "title": "Model Version (Champion)",
+        "type": "stat",
+        "gridPos": { "h": 4, "w": 6, "x": 18, "y": 20 },
+        "targets": [{
+          "expr": "decisioner_model_version{alias=\"champion\"}",
+          "legendFormat": "version"
+        }]
+      },
+      {
+        "title": "Watchdog Rollbacks (24h)",
+        "type": "stat",
+        "gridPos": { "h": 4, "w": 6, "x": 12, "y": 24 },
+        "targets": [{
+          "expr": "increase(decisioner_watchdog_rollbacks_total[24h])",
+          "legendFormat": "rollbacks"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 3 }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

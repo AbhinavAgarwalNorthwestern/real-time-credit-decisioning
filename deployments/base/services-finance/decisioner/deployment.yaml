@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: decisioner
+  labels:
+    app.kubernetes.io/name: decisioner
+    app.kubernetes.io/component: api
+    tier: service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: decisioner
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: decisioner
+        app.kubernetes.io/component: api
+        tier: service
+    spec:
+      containers:
+        - name: decisioner
+          image: decisioner
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          envFrom:
+            - configMapRef:
+                name: decisioner-config
+            - configMapRef:
+                name: cluster-config
+          env:
+            - name: DECISIONER_RW_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: RW_HOST
+            - name: DECISIONER_RW_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: RW_PORT
+            - name: DECISIONER_KAFKA_BROKER_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: KAFKA_BROKER
+            - name: DECISIONER_MLFLOW_TRACKING_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: MLFLOW_TRACKING_URI
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+      restartPolicy: Always

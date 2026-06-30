@@ -63,6 +63,11 @@
 
         // psql command line client
         "ghcr.io/rails/devcontainer/features/postgres-client:1.1.2": {}
+
+        // NOTE: kubectl / helm / kustomize / k9s / awscli / terraform / k6 /
+        // rust are NOT installed as devcontainer features. They are managed
+        // by mise (see mise.toml + postCreateCommand.sh), which gives us
+        // pinned versions reproducible across local + CI.
     },
 
     // 5. Configure tool-specific properties.

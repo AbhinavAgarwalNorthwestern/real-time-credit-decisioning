@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bias-monitor-config
+data:
+  BIAS_DECISIONS_TOPIC: 'decisions'
+  BIAS_OUTCOMES_TOPIC: 'outcomes'
+  BIAS_DRIFT_EVENTS_TOPIC: 'drift-events'
+  BIAS_CONSUMER_GROUP: 'bias-monitor'
+  BIAS_EIGHTY_PCT_RULE_FLOOR: '0.80'
+  BIAS_EQUALIZED_ODDS_TOLERANCE: '0.10'
+  BIAS_PREDICTIVE_PARITY_TOLERANCE: '0.10'
+  BIAS_WINDOW_SIZE_DECISIONS: '5000'
+  BIAS_EVAL_INTERVAL_S: '60'
+  BIAS_PROM_HTTP_PORT: '9090'
+  BIAS_LOG_LEVEL: 'INFO'

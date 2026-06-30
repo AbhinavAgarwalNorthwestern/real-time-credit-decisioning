@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shap-consumer
+  labels:
+    app.kubernetes.io/name: shap-consumer
+    app.kubernetes.io/component: compliance
+    tier: service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shap-consumer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shap-consumer
+        app.kubernetes.io/component: compliance
+        tier: service
+    spec:
+      containers:
+        - name: shap-consumer
+          image: shap-consumer
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          envFrom:
+            - configMapRef:
+                name: shap-consumer-config
+            - configMapRef:
+                name: cluster-config
+          env:
+            - name: KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: KAFKA_BROKER
+            - name: MLFLOW_TRACKING_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: MLFLOW_TRACKING_URI
+      restartPolicy: Always

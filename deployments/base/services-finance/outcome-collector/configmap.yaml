@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: outcome-collector-config
+  labels:
+    app.kubernetes.io/name: outcome-collector
+    app.kubernetes.io/component: collector
+    tier: service
+data:
+  OUTCOME_COLLECTOR_OUTCOMES_TOPIC: "outcomes"
+  OUTCOME_COLLECTOR_JOINED_TOPIC: "decision_outcomes"

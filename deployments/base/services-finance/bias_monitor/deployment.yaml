@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bias-monitor
+  labels:
+    app.kubernetes.io/name: bias-monitor
+    app.kubernetes.io/component: fairness-monitor
+    tier: service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bias-monitor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bias-monitor
+        app.kubernetes.io/component: fairness-monitor
+        tier: service
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
+        prometheus.io/path: '/metrics'
+    spec:
+      containers:
+        - name: bias-monitor
+          image: bias-monitor
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - name: metrics
+              containerPort: 9090
+          envFrom:
+            - configMapRef:
+                name: bias-monitor-config
+            - configMapRef:
+                name: cluster-config
+          env:
+            - name: BIAS_KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: KAFKA_BROKER
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9090
+            initialDelaySeconds: 30
+            periodSeconds: 60
+      restartPolicy: Always

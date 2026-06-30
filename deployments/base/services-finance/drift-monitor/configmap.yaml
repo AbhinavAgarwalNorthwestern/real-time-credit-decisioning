@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drift-monitor-config
+  labels:
+    app.kubernetes.io/name: drift-monitor
+    app.kubernetes.io/component: monitor
+    tier: service
+data:
+  DRIFT_MONITOR_WINDOW_SIZE: "500"
+  DRIFT_MONITOR_DECISIONS_TOPIC: "decisions"
+  DRIFT_MONITOR_DRIFT_TOPIC: "drift-events"

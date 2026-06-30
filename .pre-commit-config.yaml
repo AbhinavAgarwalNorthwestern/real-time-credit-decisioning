@@ -30,15 +30,9 @@ repos:
             | .*baml_client/.*
           )$
 
-      - id: cargo-fmt-decisioner
-        name: cargo fmt (decisioner)
-        # Skip silently when cargo is not on PATH (e.g. before Rust toolchain
-        # is added to the devcontainer). Re-enabled implicitly once cargo is
-        # available — no config change needed.
-        entry: bash -c 'if command -v cargo >/dev/null 2>&1; then cargo fmt --manifest-path services/decisioner/Cargo.toml -- --check; else echo "cargo not installed; skipping (see day0_log Session 10)"; fi'
-        language: system
-        files: ^services/decisioner/.*\.rs$
-        pass_filenames: false
+      # cargo-fmt-decisioner removed per ADR 008 — the decisioner is now
+      # Python+FastAPI, not Rust. Re-introduce if a Rust optimization pass
+      # is undertaken later.
 
   # Cross-cutting hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks

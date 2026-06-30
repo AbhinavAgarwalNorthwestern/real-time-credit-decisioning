@@ -1,0 +1,80 @@
+# Template Job for one-shot historical backfill of synthetic transactions.
+#
+# NOT applied directly by the standard kustomize flow — the training_flow
+# service renders this template at runtime via backfill_trigger.py, filling
+# in env vars TXN_START, TXN_END, TXN_SEED, TXN_MAX_EVENTS, and a unique
+# job name suffix.
+#
+# Backfill mode behavior (services/transactions/src/transactions/config.py):
+# - TXN_MODE=backfill — emit events spanning [TXN_START, TXN_END] as fast as
+#   Kafka accepts; do not match wall-clock.
+# - TXN_MAX_EVENTS — soft cap; useful for Day-2 iteration before committing
+#   to the full window.
+#
+# The Job uses the same image + configmap as the streaming Deployment;
+# only TXN_MODE and the window bounds differ.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: transactions-backfill-PLACEHOLDER
+  labels:
+    app.kubernetes.io/name: transactions
+    app.kubernetes.io/component: backfill
+    tier: job
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 1800
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: transactions
+        app.kubernetes.io/component: backfill
+        tier: job
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: transactions-backfill
+          image: transactions
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          envFrom:
+            - configMapRef:
+                name: transactions-config
+            - configMapRef:
+                name: cluster-config
+          env:
+            - name: TXN_MODE
+              value: 'backfill'
+            - name: TXN_KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: KAFKA_BROKER
+            # The following are overridden per-invocation by backfill_trigger.py.
+            - name: TXN_START
+              value: 'PLACEHOLDER'
+            - name: TXN_END
+              value: 'PLACEHOLDER'
+            - name: TXN_SEED
+              value: 'PLACEHOLDER'
+            - name: TXN_MAX_EVENTS
+              value: 'PLACEHOLDER'
+            # MinIO credentials for the state-checkpoint write at backfill
+            # end — captures customer balances/session state for live to load.
+            - name: TXN_STATE_MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-minio-secret
+                  key: AWS_ACCESS_KEY_ID
+                  optional: true
+            - name: TXN_STATE_MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-minio-secret
+                  key: AWS_SECRET_ACCESS_KEY
+                  optional: true

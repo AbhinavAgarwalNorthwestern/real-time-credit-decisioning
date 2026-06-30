@@ -20,10 +20,16 @@ supersedes the old one. Don't edit the original.
 | [001](001-quixstreams-over-kafka-streams.md) | Quixstreams over Kafka Streams / Flink for stream processing | Accepted |
 | [002](002-risingwave-as-feature-store-not-feast.md) | RisingWave materialized views as feature store (no Feast layer) | Accepted |
 | [003](003-metaflow-kubernetes-not-batch.md) | Metaflow with `@kubernetes` (not `@batch`) — cloud-agnostic batch orchestration | Accepted |
-| [004](004-monolithic-decisioner-microservices-where-they-help.md) | Monolithic Rust decisioner on the request path; microservices on the streaming/batch planes | Accepted |
+| [004](004-monolithic-decisioner-microservices-where-they-help.md) | Monolithic decisioner on the request path; microservices on the streaming/batch planes | **Superseded by [008](008-python-fastapi-decisioner-supersedes-rust.md)** |
 | [005](005-mlflow-artifact-proxy-not-direct-s3.md) | MLflow tracking server with `--serve-artifacts` proxy (clients don't talk to MinIO directly) | Accepted |
 | [006](006-base-overlays-kustomize-not-helm.md) | Kustomize base+overlays for our manifests; Helm only for third-party charts | Accepted |
+| [007](007-crypto-split-archive-retain-sentiment.md) | Crypto-domain code split — retain sentiment-scoring pattern; archive the rest | **Superseded by [011](011-drop-news-sentiment-retention.md)** |
+| [008](008-python-fastapi-decisioner-supersedes-rust.md) | Python FastAPI decisioner — supersedes ADR 004 (Rust) | Accepted |
+| [009](009-pure-risingwave-sql-for-feature-computation.md) | Pure RisingWave SQL for feature computation (no Python `behavioral_features` service) | Accepted |
+| [010](010-synthetic-rct-treatment-assignment.md) | Synthetic RCT (50/50 random) for Day-2 training-data treatment assignment; IPW deferred to Day-6 OPE | Accepted |
+| [011](011-drop-news-sentiment-retention.md) | Drop news + news-sentiment from active project surface (supersedes ADR 007); directories remain as Pau's-course archive | Accepted |
+| [012](012-hot-challenger-retraining-strategy.md) | Hot-challenger retraining + comprehensive drift detection (7 detectors: PSI, KS, ADWIN, JS divergence, performance gap, schema, per-segment) | Accepted |
 
-ADRs 007–010 are placeholders for upcoming decisions (champion-challenger
-shape, bandit-on-uplift composition, off-policy evaluation gate, Terraform-not-CDK).
-They will be written as those calls are made during the build, not preemptively.
+ADR 013+ are reserved for upcoming decisions (Terraform-not-CDK,
+production retention policy, etc.). They will be written as those
+calls are made during the build, not preemptively.

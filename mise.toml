@@ -11,3 +11,9 @@ KUBECONFIG = "{{config_root}}/kubeconfig"
 "aqua:kubernetes/kubectl" = "1.32.3"
 "aqua:mikefarah/yq" = "4.45.1"
 "aqua:derailed/k9s" = "0.40.10"
+# ---- Added for realtime-credit-decisioning Day 1+ ----
+"aqua:aws/aws-cli" = "2.15.0"
+"aqua:hashicorp/terraform" = "1.7.5"
+"aqua:grafana/k6" = "0.51.0"
+# Rust removed per ADR 008 (Python FastAPI decisioner supersedes Rust ADR 004).
+# Re-add `"rust" = "stable"` here if a Rust optimization pass is undertaken.

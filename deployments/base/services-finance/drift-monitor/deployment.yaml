@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drift-monitor
+  labels:
+    app.kubernetes.io/name: drift-monitor
+    app.kubernetes.io/component: monitor
+    tier: service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: drift-monitor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: drift-monitor
+        app.kubernetes.io/component: monitor
+        tier: service
+    spec:
+      containers:
+        - name: drift-monitor
+          image: drift-monitor
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          envFrom:
+            - configMapRef:
+                name: drift-monitor-config
+            - configMapRef:
+                name: cluster-config
+          env:
+            - name: KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: KAFKA_BROKER
+      restartPolicy: Always

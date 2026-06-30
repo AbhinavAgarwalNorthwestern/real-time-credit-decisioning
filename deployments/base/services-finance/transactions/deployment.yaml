@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transactions
+  labels:
+    app.kubernetes.io/name: transactions
+    app.kubernetes.io/component: producer
+    tier: service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: transactions
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: transactions
+        app.kubernetes.io/component: producer
+        tier: service
+    spec:
+      containers:
+        - name: transactions
+          image: transactions
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          envFrom:
+            - configMapRef:
+                name: transactions-config
+            - configMapRef:
+                name: cluster-config
+          env:
+            - name: TXN_KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: cluster-config
+                  key: KAFKA_BROKER
+            # MinIO credentials for state checkpointing (producer balances/
+            # session state survive pod restarts). See
+            # services/transactions/src/transactions/state_checkpoint.py.
+            # The mlflow-minio-secret exists from Day 0 bootstrap; we reuse
+            # it rather than provisioning a separate secret. AWS overlay
+            # swaps this for IRSA + S3.
+            - name: TXN_STATE_MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-minio-secret
+                  key: AWS_ACCESS_KEY_ID
+                  optional: true
+            - name: TXN_STATE_MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-minio-secret
+                  key: AWS_SECRET_ACCESS_KEY
+                  optional: true
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import sys; sys.exit(0)"
+            initialDelaySeconds: 30
+            periodSeconds: 60
+      restartPolicy: Always

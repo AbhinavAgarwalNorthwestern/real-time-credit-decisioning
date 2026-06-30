@@ -1,0 +1,37 @@
+# k9s custom views — adds useful columns and reorders existing ones for
+# the resources we look at most. Loaded from ~/.config/k9s/views.yaml.
+#
+# Reference: https://k9scli.io/topics/columns/
+
+k9s:
+  views:
+    v1/pods:
+      columns:
+        - NAME
+        - READY
+        - STATUS
+        - RESTARTS
+        - IP
+        - NODE
+        - AGE
+        - IMAGE         # custom column — image tag, useful when rolling new versions
+        - CPU
+        - MEM
+    v1/services:
+      columns:
+        - NAME
+        - TYPE
+        - CLUSTER-IP
+        - EXTERNAL-IP
+        - PORTS
+        - SELECTOR      # custom — which Pods this Service routes to
+        - AGE
+    apps/v1/deployments:
+      columns:
+        - NAME
+        - READY
+        - UP-TO-DATE
+        - AVAILABLE
+        - AGE
+        - IMAGE         # custom — Deployment image tag
+        - LABELS        # custom — labels we sort/filter on

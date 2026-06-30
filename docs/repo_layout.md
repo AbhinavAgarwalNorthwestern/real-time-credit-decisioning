@@ -66,25 +66,31 @@ Where we deviate from `project_01`, we deviate on purpose:
 
 ```
 services/
-├── news/                      # RETAINED — produces news event stream for macro signal (ADR 007)
-├── news-sentiment/            # RETAINED — sentiment-scoring pipeline reused for macro_sentiment_1h feature (ADR 002, ADR 007)
+├── news/                      # ARCHIVE — Pau's course leftover; not on active surface (ADR 011)
+├── news-sentiment/            # ARCHIVE — same (ADR 011)
 │
 ├── transactions/              # synthetic credit txn stream producer (Day 1)
-├── behavioral_features/       # Kafka → behavioral features in RisingWave (Day 1)
-├── decisioner/                # Rust /decide — collapsed request plane (ADR 004)
+├── training_flow/             # Day-2 offline training pipeline (synthetic-RCT + T-learner)
+├── decisioner/                # Python FastAPI /decide — collapsed request plane (ADR 008, supersedes 004)
 ├── drift_monitor/             # reads decision stream → emits drift events (Day 5)
 ├── retraining_flow/           # Metaflow flow on the batch plane (Day 5)
 └── outcome_collector/         # joins outcomes back to decisions for off-policy eval (Day 6)
 ```
 
-### Why news + news-sentiment are retained
+Note: `services/behavioral_features/` was removed in Day 1 per ADR 009 —
+feature computation moved into RisingWave SQL.
 
-These two are the only inheritances kept after the crypto-domain split
-(ADR 007). They earn their keep because the `macro_sentiment_1h`
-feature in `docs/02_data_and_features.md` literally subscribes to the
-`news_sentiment` Kafka topic. Day 1 may refactor the sentiment schema
-to remove the `coin`-keyed field naming inherited from the cohort —
-this is logged as known debt in ADR 007's Consequences.
+### Why news + news-sentiment are archived (not deleted)
+
+ADR 007 originally retained these two for the `macro_sentiment_1h`
+feature. ADR 011 superseded that decision: the feature was never
+actually wired into the credit-decisioning pipeline, the services were
+running cost for no signal, and the platform now ships with a purely
+behavioral feature set.
+
+The directories remain on disk as provenance — they document the Pau
+course inheritance baseline and the scope of what was rebuilt — but
+they exit the uv workspace, exit CI, and exit the active docs.
 
 The full cohort-4 baseline lives in a separate archive at
 `C:\Users\abhin\realtime-ml-cohort-4-archive\` on the `cohort-4`

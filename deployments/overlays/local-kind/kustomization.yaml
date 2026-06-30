@@ -3,6 +3,13 @@ kind: Kustomization
 metadata:
   name: local-kind
 
+# Apply to every resource the overlay manages — including ConfigMaps
+# produced by configMapGenerator below, which do NOT inherit the base's
+# namespace declaration. Without this, generator-produced CMs land in
+# `default` and the Deployment in `real-time-ml` can't envFrom them
+# (manifests as CreateContainerConfigError on pod start).
+namespace: real-time-ml
+
 resources:
   - ../../base
 
@@ -18,11 +25,14 @@ images:
   - name: behavioral_features
     newName: localhost:5000/behavioral_features
     newTag: dev
-  - name: drift_monitor
-    newName: localhost:5000/drift_monitor
+  - name: drift-monitor
+    newName: localhost:5000/drift-monitor
     newTag: dev
-  - name: outcome_collector
-    newName: localhost:5000/outcome_collector
+  - name: outcome-collector
+    newName: localhost:5000/outcome-collector
+    newTag: dev
+  - name: shap-consumer
+    newName: localhost:5000/shap-consumer
     newTag: dev
 
 # Laptop-scale patches: single replica, small resource limits.
@@ -44,5 +54,8 @@ configMapGenerator:
       - OBJECT_STORE_ENDPOINT=http://risingwave-minio.risingwave.svc.cluster.local:9000
       - KAFKA_BROKER=kafka-e11b-kafka-bootstrap.kafka.svc.cluster.local:9092
       - MLFLOW_TRACKING_URI=http://mlflow-tracking.mlflow.svc.cluster.local
-      - RW_HOST=risingwave-frontend.risingwave.svc.cluster.local
+      - RW_HOST=risingwave.risingwave.svc.cluster.local
       - RW_PORT=4567
+
+generatorOptions:
+  disableNameSuffixHash: true

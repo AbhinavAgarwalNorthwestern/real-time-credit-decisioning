@@ -1,0 +1,51 @@
+{
+  "data": {
+    "parquet_path": "data/training.parquet",
+    "parquet_sha256": "53d00248764873ff088e05a69fd673db1803a22dfc760be136bb0a831a19e5e8",
+    "split_fractions": {
+      "test": 0.15,
+      "train": 0.7,
+      "val": 0.15
+    }
+  },
+  "derived_seeds": {
+    "backfill": 950289785,
+    "baseline_random": 27324724,
+    "labels": 1656210733,
+    "optuna_sampler": 1201151383,
+    "train": 1697156170
+  },
+  "dgp_thresholds": {
+    "rate_heterogeneity": "CV > 1.0",
+    "segment_separability": "multiclass macro AUC > 0.85",
+    "temporal_signal": "mean lag-1 autocorr(velocity_5m) \u2208 [0.1, 0.95]"
+  },
+  "equivalence_tol": 0.001,
+  "master_seed": 42,
+  "policy_thresholds": {
+    "min_kendall_tau": 0.6,
+    "min_segment_separability_auc": 0.85,
+    "offer_cli_uplift_threshold": 0.0
+  },
+  "training_recipe": {
+    "batch_size": 256,
+    "early_stopping_patience": 5,
+    "feature_cols": [
+      "velocity_5m",
+      "total_spend_5m",
+      "avg_spend_5m",
+      "utilization",
+      "velocity_1h",
+      "total_spend_1h",
+      "avg_spend_1h",
+      "mcc_entropy_1h"
+    ],
+    "max_epochs": 50,
+    "n_optuna_trials": 5,
+    "target_cols": [
+      "accepted",
+      "spend_delta",
+      "defaulted"
+    ]
+  }
+}

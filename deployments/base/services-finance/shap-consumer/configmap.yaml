@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shap-consumer-config
+  labels:
+    app.kubernetes.io/name: shap-consumer
+    app.kubernetes.io/component: compliance
+    tier: service
+data:
+  SHAP_CONSUMER_DECISIONS_TOPIC: "decisions"
+  SHAP_CONSUMER_OUTPUT_TOPIC: "adverse-action-reasons"
+  SHAP_CONSUMER_BACKGROUND_SIZE: "200"

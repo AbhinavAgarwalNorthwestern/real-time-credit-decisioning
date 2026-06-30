@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: decisioner-config
+  labels:
+    app.kubernetes.io/name: decisioner
+    app.kubernetes.io/component: api
+    tier: service
+data:
+  DECISIONER_HOST: "0.0.0.0"
+  DECISIONER_PORT: "8080"
+  DECISIONER_LOG_LEVEL: "INFO"
+  DECISIONER_WORKERS: "1"
+  DECISIONER_RW_USER: "root"
+  DECISIONER_RW_DATABASE: "dev"
+  DECISIONER_RW_PASSWORD: ""
+  DECISIONER_RW_POOL_MIN_SIZE: "4"
+  DECISIONER_RW_POOL_MAX_SIZE: "40"
+  DECISIONER_KAFKA_AUDIT_TOPIC: "decisions"
+  DECISIONER_MODEL_REFRESH_INTERVAL_S: "60"
+  DECISIONER_ORT_INTRA_OP_NUM_THREADS: "2"
+  DECISIONER_ORT_INTER_OP_NUM_THREADS: "1"

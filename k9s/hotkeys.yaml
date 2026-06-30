@@ -1,0 +1,46 @@
+# k9s hotkeys — keyboard shortcuts that jump straight to namespaces /
+# resource views without typing the alias. Loaded from
+# ~/.config/k9s/hotkeys.yaml; see docs/runbooks/k9s_navigation.md.
+#
+# k9s uses lowercase 'shift' notation for actual letter keys, and accepts
+# 'ctrl', 'alt', and combinations. Avoid clashing with built-in shortcuts:
+#   q, esc           - back / quit
+#   :                - command bar
+#   /                - filter
+#   ?                - help
+#   ctrl-d, ctrl-k   - delete / kill (already reserved)
+#
+# We use shift-letter combos for our jumps.
+
+hotkey:
+  # Project namespaces
+  shift-f:
+    shortCut: Shift-F
+    description: Jump to finance pods
+    command: pods/real-time-ml
+  shift-m:
+    shortCut: Shift-M
+    description: Jump to MLflow pods
+    command: pods/mlflow
+  shift-k:
+    shortCut: Shift-K
+    description: Jump to Kafka pods
+    command: pods/kafka
+  shift-r:
+    shortCut: Shift-R
+    description: Jump to RisingWave pods
+    command: pods/risingwave
+
+  # Cross-cutting application views
+  shift-s:
+    shortCut: Shift-S
+    description: All Services across namespaces
+    command: services/all
+  shift-d:
+    shortCut: Shift-D
+    description: All Deployments across namespaces
+    command: deployments/all
+  shift-l:
+    shortCut: Shift-L
+    description: All Pods across namespaces (long view)
+    command: pods/all

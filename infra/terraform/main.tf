@@ -4,76 +4,62 @@
 #   - VPC + public/private subnets across 2 AZs
 #   - EKS cluster (managed control plane)
 #   - ECR repositories per containerized service
-#   - S3 buckets (MLflow artifacts + decision audit log)
+#   - S3 buckets (MLflow artifacts + decision audit log + SHAP results)
 #   - IAM roles and IRSA service-account mappings
-#   - (optional) MLflow tracking server on EC2 if not running in-cluster
 #
-# K8s workloads (Deployments, Services, ConfigMaps) are NOT in this
-# Terraform — they live in `deployments/overlays/aws-eks/` and apply via
-# `kubectl apply -k`.
-#
-# See docs/decisions/006-base-overlays-kustomize-not-helm.md for the
-# Terraform / Kustomize split, and docs/repo_layout.md for the broader
-# infra/terraform/ + infra/lib/ structure.
+# K8s workloads (Deployments, Services, ConfigMaps) live in
+# `deployments/overlays/aws-eks/` and apply via `kubectl apply -k`.
 
 terraform {
-  required_version = ">= 1.7"
+  backend "s3" {
+    bucket = "rtcd-terraform-state"
+    key    = "infra/terraform.tfstate"
+    region = "ap-south-1"
+  }
 }
 
 module "vpc" {
-  source = "./modules/vpc"
-  # cidr_block = "10.0.0.0/16"
-  # azs        = ["${var.aws_region}a", "${var.aws_region}b"]
-  # cluster_name = var.cluster_name
+  source       = "./modules/vpc"
+  cluster_name = var.cluster_name
+  aws_region   = var.aws_region
+  tags         = var.tags
 }
 
 module "eks_cluster" {
-  source = "./modules/eks_cluster"
-  # vpc_id          = module.vpc.id
-  # subnet_ids      = module.vpc.private_subnet_ids
-  # cluster_name    = var.cluster_name
-  # cluster_version = var.cluster_version
-  # environment     = var.environment
+  source          = "./modules/eks_cluster"
+  cluster_name    = var.cluster_name
+  cluster_version = var.cluster_version
+  vpc_id          = module.vpc.vpc_id
+  subnet_ids      = module.vpc.private_subnet_ids
+  environment     = var.environment
+  tags            = var.tags
 }
 
 module "ecr" {
   source = "./modules/ecr"
-  # services = [
-  #   "decisioner",
-  #   "transactions",
-  #   "behavioral_features",
-  #   "drift_monitor",
-  #   "outcome_collector",
-  #   # crypto pipeline still images
-  #   "trades",
-  #   "candles",
-  #   "technical_indicators",
-  #   "news-ingestor",
-  #   "prediction-generator",
-  #   "prediction-api",
-  #   "training-pipeline",
-  # ]
+  services = [
+    "decisioner",
+    "transactions",
+    "drift-monitor",
+    "outcome-collector",
+    "shap-consumer",
+    "retraining-flow",
+  ]
+  tags = var.tags
 }
 
 module "s3" {
-  source = "./modules/s3"
-  # buckets = {
-  #   mlflow_artifacts = "mlflow-artifacts-${var.environment}"
-  #   decision_log     = "decision-log-${var.environment}"
-  # }
+  source      = "./modules/s3"
+  environment = var.environment
+  tags        = var.tags
 }
 
 module "iam_irsa" {
-  source = "./modules/iam_irsa"
-  # cluster_oidc_provider_arn = module.eks_cluster.oidc_provider_arn
-  # service_accounts = {
-  #   mlflow      = { namespace = "mlflow",      bucket = module.s3.mlflow_bucket }
-  #   decisioner  = { namespace = "real-time-ml", bucket = module.s3.decision_log_bucket }
-  # }
+  source                   = "./modules/iam_irsa"
+  cluster_oidc_provider_arn = module.eks_cluster.oidc_provider_arn
+  cluster_oidc_issuer       = module.eks_cluster.oidc_issuer
+  mlflow_bucket             = module.s3.mlflow_bucket
+  decision_log_bucket       = module.s3.decision_log_bucket
+  shap_results_bucket       = module.s3.shap_results_bucket
+  tags                      = var.tags
 }
-
-# Optional — only used if MLflow runs outside the cluster on EC2.
-# Default: MLflow runs in-cluster (per ADR 005 custom Deployment).
-# module "mlflow_server" {
-#   source = "./modules/mlflow_server"
-# }

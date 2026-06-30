@@ -1,16 +1,22 @@
-"""Outcome collector.
+"""Outcome collector — runs the async consumer loop from collector.py."""
 
-Joins downstream outcomes back to decisions; writes `decision_outcomes`
-rows to RisingWave for off-policy evaluation (Day 6).
+from __future__ import annotations
 
-Skeleton only at Day 0.
-"""
+import asyncio
+import os
 
 from loguru import logger
 
+from .collector import run
+
 
 def main() -> None:
-    logger.info('outcome_collector service: skeleton; Day 6 will implement the join')
+    broker = os.environ.get(
+        'KAFKA_BROKER',
+        'kafka-e11b-kafka-bootstrap.kafka.svc.cluster.local:9092',
+    )
+    logger.info('outcome_collector_starting broker={}', broker)
+    asyncio.run(run(broker))
 
 
 if __name__ == '__main__':

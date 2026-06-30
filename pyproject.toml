@@ -1,7 +1,7 @@
 [project]
 name = "realtime-credit-decisioning-platform"
 version = "0.1.0"
-description = "Real-time credit-decisioning platform with neural uplift models, contextual bandit selection, champion-challenger MLOps, and a Rust low-latency decision API."
+description = "Real-time credit-decisioning platform with neural uplift models, contextual bandit selection, champion-challenger MLOps, and a low-latency Python+FastAPI decision API (per ADR 008, supersedes ADR 004)."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -18,16 +18,21 @@ dev = []
 
 [tool.uv.workspace]
 members = [
-    # Retained from upstream cohort — sentiment-scoring pattern reused for the
-    # macro_sentiment_1h feature in the finance domain (see ADR 007).
-    "services/news",
-    "services/news-sentiment",
-    # Finance pipeline (ADR 004 decomposition; decisioner is Rust — see Cargo.toml)
+    # Finance pipeline (ADR 004 collapsed request path; ADR 008 made the
+    # decisioner Python+FastAPI rather than Rust)
+    # NOTE: services/behavioral_features removed per ADR 009 — feature
+    # computation moved to pure RisingWave SQL (deployments/dev/risingwave/)
+    # NOTE: services/news and services/news-sentiment removed per ADR 011
+    # (supersedes ADR 007). Directories remain in the repo as Pau's-course
+    # archive but are no longer workspace members and the `macro_sentiment_1h`
+    # feature they would have fed is dropped from the platform.
     "services/transactions",
-    "services/behavioral_features",
+    "services/training_flow",
+    "services/decisioner",
     "services/drift_monitor",
     "services/retraining_flow",
     "services/outcome_collector",
+    "services/shap_consumer",
     # Cloud-touch abstractions (imported by application services)
     "infra/lib",
 ]
@@ -59,6 +64,17 @@ lint.ignore = [
 [tool.ruff.format]
 indent-style = "space"
 quote-style = "single"
+
+[tool.pytest.ini_options]
+testpaths = ["services"]
+markers = [
+    "integration: tests that mock external services (RW, Kafka, K8s) but test cross-module wiring",
+    "pipeline: end-to-end pipeline tests in offline mode (no cluster, synthetic data only)",
+]
+addopts = "-m 'not integration and not pipeline'"
+filterwarnings = [
+    "ignore::DeprecationWarning:onnxruntime.*",
+]
 
 [tool.mypy]
 strict = true

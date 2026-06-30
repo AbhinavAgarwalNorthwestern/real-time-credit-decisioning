@@ -1,0 +1,25 @@
+# k9s aliases — shorthand for common kubectl resource navigation in this project.
+# Loaded from ~/.config/k9s/aliases.yaml; the postCreateCommand symlinks this
+# file in automatically. See docs/runbooks/k9s_navigation.md.
+
+aliases:
+  # Project namespaces — type ":fin" / ":mlf" / etc. to jump into them.
+  fin: pods/real-time-ml
+  mlf: pods/mlflow
+  kaf: pods/kafka
+  rwv: pods/risingwave
+
+  # Cross-namespace resource views.
+  allp: pods/all
+  alls: services/all
+  alld: deployments/all
+
+  # Application-tier filters using our labelled invariants
+  # (every Deployment in this project carries tier=service or tier=infra).
+  svcs: deployments?labelSelector=tier=service
+  infra: deployments?labelSelector=tier=infra
+
+  # Logs straight to the decisioner / data-path pods.
+  dec: pods?labelSelector=app=decisioner
+  txn: pods?labelSelector=app=transactions
+  feat: pods?labelSelector=app=behavioral-features

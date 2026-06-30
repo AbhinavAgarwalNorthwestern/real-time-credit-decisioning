@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: transactions-config
+  labels:
+    app.kubernetes.io/name: transactions
+    app.kubernetes.io/component: producer
+    tier: service
+data:
+  TXN_MODE: "live"
+  TXN_COHORT_SIZE: "1000"
+  TXN_SEED: "42"
+  TXN_EVENTS_PER_SEC_PER_CUSTOMER: "0.05"
+  TXN_KAFKA_TOPIC: "transactions"
+  TXN_LOG_LEVEL: "INFO"
+  TXN_VALIDATE: "false"

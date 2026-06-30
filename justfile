@@ -30,10 +30,16 @@ check: lint fmt-check typecheck
 # ---------------------------------------------------------------------------
 
 test:
-    uv run pytest -q
+    uv run pytest --import-mode=importlib -q
 
 test-v:
-    uv run pytest -v --tb=short
+    uv run pytest --import-mode=importlib -v --tb=short
+
+test-integration:
+    uv run pytest --import-mode=importlib -m integration -v --tb=short
+
+test-pipeline:
+    uv run pytest --import-mode=importlib -m pipeline -v --tb=short
 
 # Run finance-pipeline smoke test: brings up the finance services locally and
 # confirms /decide responds with a valid decision under the SLO.
@@ -56,15 +62,14 @@ dev service:
 docker-build image env="dev":
     ./scripts/build-and-push-image.sh {{image}} {{env}}
 
-# Build every finance-domain service image (retained news-ingestor for macro sentiment).
+# Build every active service image.
 docker-build-all env="dev":
     ./scripts/build-and-push-image.sh transactions {{env}}
-    ./scripts/build-and-push-image.sh behavioral-features {{env}}
     ./scripts/build-and-push-image.sh decisioner {{env}}
     ./scripts/build-and-push-image.sh drift-monitor {{env}}
     ./scripts/build-and-push-image.sh outcome-collector {{env}}
+    ./scripts/build-and-push-image.sh shap-consumer {{env}}
     ./scripts/build-and-push-image.sh retraining-flow {{env}}
-    ./scripts/build-and-push-image.sh news-ingestor {{env}}
 
 # ---------------------------------------------------------------------------
 # Kubernetes — local kind cluster
@@ -132,11 +137,19 @@ tf-destroy:
 
 # Run the k6 load test against the local decision-api
 load-test-local:
-    k6 run --vus 50 --duration 5m scripts/k6_decide.js
+    k6 run scripts/load_test.js --env BASE_URL=http://localhost:8080
 
-# Run the k6 load test against the AWS-deployed decision-api
-load-test-aws target:
-    k6 run --vus 200 --duration 10m --env DECIDE_URL={{target}} scripts/k6_decide.js
+# Run the k6 load test against a specific URL
+load-test target:
+    k6 run scripts/load_test.js --env BASE_URL={{target}}
+
+# ---------------------------------------------------------------------------
+# Training pipeline
+# ---------------------------------------------------------------------------
+
+# Run the Day-2 training pipeline (offline, no cluster needed)
+train seed="42" trials="5":
+    uv run python -m training_flow --master-seed {{seed}} --backfill-days 7 --skip-backfill --n-optuna-trials {{trials}}
 
 # ---------------------------------------------------------------------------
 # Metaflow — batch orchestration

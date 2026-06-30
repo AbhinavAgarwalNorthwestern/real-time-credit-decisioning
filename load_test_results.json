@@ -1,0 +1,10 @@
+{
+  "slo_check": {
+    "p99_latency_ms": null,
+    "p99_pass": false,
+    "p50_latency_ms": null,
+    "throughput_rps": 237.86,
+    "error_rate": 1,
+    "error_rate_pass": false
+  }
+}
