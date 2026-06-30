@@ -33,6 +33,7 @@ members = [
     "services/retraining_flow",
     "services/outcome_collector",
     "services/shap_consumer",
+    "services/bias_monitor",
     # Cloud-touch abstractions (imported by application services)
     "infra/lib",
 ]

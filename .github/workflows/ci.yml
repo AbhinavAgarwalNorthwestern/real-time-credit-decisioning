@@ -31,12 +31,8 @@ jobs:
 
       - name: Install workspace packages
         run: |
-          uv venv
-          uv pip install -e services/transactions -e services/training_flow \
-            -e services/decisioner -e services/drift_monitor \
-            -e services/retraining_flow -e services/outcome_collector \
-            -e services/shap_consumer -e services/bias_monitor -e infra/lib \
-            ruff
+          uv sync --all-packages --all-extras || uv sync --all-packages
+          uv pip install ruff
 
       - name: Ruff check
         run: uv run ruff check .
@@ -57,12 +53,8 @@ jobs:
 
       - name: Install workspace packages
         run: |
-          uv venv
-          uv pip install -e services/transactions -e services/training_flow \
-            -e services/decisioner -e services/drift_monitor \
-            -e services/retraining_flow -e services/outcome_collector \
-            -e services/shap_consumer -e services/bias_monitor -e infra/lib \
-            mypy
+          uv sync --all-packages --all-extras || uv sync --all-packages
+          uv pip install mypy
 
       - name: Mypy strict
         run: uv run mypy --strict --explicit-package-bases services/ infra/lib/
@@ -80,12 +72,8 @@ jobs:
 
       - name: Install workspace packages
         run: |
-          uv venv
-          uv pip install -e services/transactions -e services/training_flow \
-            -e services/decisioner -e services/drift_monitor \
-            -e services/retraining_flow -e services/outcome_collector \
-            -e services/shap_consumer -e services/bias_monitor -e infra/lib \
-            pytest pytest-asyncio pytest-mock
+          uv sync --all-packages --all-extras || uv sync --all-packages
+          uv pip install pytest pytest-asyncio pytest-mock
 
       - name: Unit tests (fast, no cluster needed)
         run: uv run pytest --import-mode=importlib -m "not integration and not pipeline" -q --tb=short
@@ -104,12 +92,8 @@ jobs:
 
       - name: Install workspace packages
         run: |
-          uv venv
-          uv pip install -e services/transactions -e services/training_flow \
-            -e services/decisioner -e services/drift_monitor \
-            -e services/retraining_flow -e services/outcome_collector \
-            -e services/shap_consumer -e services/bias_monitor -e infra/lib \
-            pytest pytest-asyncio pytest-mock
+          uv sync --all-packages --all-extras || uv sync --all-packages
+          uv pip install pytest pytest-asyncio pytest-mock
 
       - name: Integration tests (RW/Kafka mocked, no live cluster)
         run: uv run pytest --import-mode=importlib -m integration -q --tb=short
@@ -128,12 +112,8 @@ jobs:
 
       - name: Install workspace packages
         run: |
-          uv venv
-          uv pip install -e services/transactions -e services/training_flow \
-            -e services/decisioner -e services/drift_monitor \
-            -e services/retraining_flow -e services/outcome_collector \
-            -e services/shap_consumer -e services/bias_monitor -e infra/lib \
-            pytest pytest-asyncio pytest-mock
+          uv sync --all-packages --all-extras || uv sync --all-packages
+          uv pip install pytest pytest-asyncio pytest-mock
 
       - name: Pipeline smoke test (offline mode, synthetic data)
         run: uv run pytest --import-mode=importlib -m pipeline -q --tb=short
