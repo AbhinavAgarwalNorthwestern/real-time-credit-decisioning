@@ -50,7 +50,10 @@ jobs:
           TAG="${{ github.ref_name }}"
           IMAGE="${{ steps.ecr.outputs.registry }}/${{ env.ECR_PREFIX }}/${{ matrix.service }}:${TAG}"
           IMAGE_LATEST="${{ steps.ecr.outputs.registry }}/${{ env.ECR_PREFIX }}/${{ matrix.service }}:latest"
-          docker build -t "${IMAGE}" -t "${IMAGE_LATEST}" "${{ steps.svc.outputs.dir }}"
+          # Build context = repo root so cross-service COPY (e.g. retraining_flow
+          # copying training_flow/ for shared modules) works. Dockerfile path
+          # selected via -f.
+          docker build -t "${IMAGE}" -t "${IMAGE_LATEST}" -f "${{ steps.svc.outputs.dir }}/Dockerfile" .
           docker push "${IMAGE}"
           docker push "${IMAGE_LATEST}"
 
