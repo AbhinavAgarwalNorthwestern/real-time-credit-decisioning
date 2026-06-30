@@ -4,7 +4,11 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    # main: gate of record. abhinav/**: feature-branch fast feedback so
+    # we don't ship images to ECR without lint/typecheck/tests having
+    # run on the exact commit being built.
+    branches: [main, 'abhinav/**']
+  workflow_dispatch: {}
 
 concurrency:
   group: ci-${{ github.ref }}
