@@ -57,7 +57,16 @@ jobs:
           uv pip install mypy
 
       - name: Mypy strict
-        run: uv run mypy --strict --explicit-package-bases services/
+        run: |
+          uv run mypy --strict \
+            services/transactions/src/ \
+            services/training_flow/src/ \
+            services/decisioner/src/ \
+            services/drift_monitor/src/ \
+            services/retraining_flow/src/ \
+            services/outcome_collector/src/ \
+            services/shap_consumer/src/ \
+            services/bias_monitor/src/
 
   unit-test:
     runs-on: ubuntu-latest
