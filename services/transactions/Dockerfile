@@ -4,8 +4,9 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir uv
 
-COPY pyproject.toml .
-COPY src/ src/
+# Build context = repo root (CD workflow). Use -f services/transactions/Dockerfile .
+COPY services/transactions/pyproject.toml ./
+COPY services/transactions/src/ ./src/
 RUN uv pip install --system --no-cache .
 
 ENV TXN_MODE=live \

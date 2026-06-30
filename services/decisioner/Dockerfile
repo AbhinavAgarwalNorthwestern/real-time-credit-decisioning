@@ -4,8 +4,9 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir uv
 
-COPY pyproject.toml .
-COPY src/ src/
+# Build context = repo root (CD workflow). Use -f services/decisioner/Dockerfile .
+COPY services/decisioner/pyproject.toml ./
+COPY services/decisioner/src/ ./src/
 RUN uv pip install --system --no-cache .
 
 ENV DECISIONER_HOST=0.0.0.0 \
