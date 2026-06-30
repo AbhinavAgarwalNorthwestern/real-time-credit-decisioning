@@ -157,14 +157,15 @@ def test_run_full_eval_renders_sr_11_7_checklist() -> None:
 
 def test_run_full_eval_skips_stress_when_balance_columns_missing() -> None:
     """Stress test needs balance/limit columns; skipped gracefully if absent."""
+    n = 20
     df_minimal = pd.DataFrame(
         {
-            'customer_id': ['c1', 'c2', 'c3'],
-            'credit_score': [600.0, 700, 800],
+            'customer_id': [f'c{i}' for i in range(n)],
+            'credit_score': np.linspace(500, 800, n),
         }
     )
-    pred = np.array([0.15, 0.10, 0.05])
-    actual = np.array([0, 0, 1])
+    pred = np.linspace(0.05, 0.30, n)
+    actual = np.array([0] * (n - 5) + [1] * 5)
     result = run_full_eval(
         df_minimal,
         pred,

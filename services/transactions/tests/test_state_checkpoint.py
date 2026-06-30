@@ -1,13 +1,18 @@
-"""Unit tests for producer state checkpoint save/load and generator restore.
+"""Integration tests for producer state checkpoint save/load and generator restore.
 
 The S3 I/O is tested via moto (in-memory S3 mock). The generator integration
 is tested without any I/O — just verifying that injecting `restore_from`
 overrides baseline_balance correctly.
+
+Note: marked integration because moto 5.x does not intercept custom endpoint_url
+(the state_checkpoint module passes endpoint_url to boto3 client).
 """
 
 from __future__ import annotations
 
 import pytest
+
+pytestmark = pytest.mark.integration
 
 boto3 = pytest.importorskip('boto3')
 moto = pytest.importorskip('moto')

@@ -183,7 +183,7 @@ def test_n_shifts_counts_correctly() -> None:
     cur = pd.DataFrame(
         {
             'a': rng.normal(0, 1, size=2000),  # stable
-            'b': rng.normal(0.3, 1, size=2000),  # minor
+            'b': rng.normal(0.5, 1, size=2000),  # minor
             'c': rng.normal(3.0, 1, size=2000),  # major
         }
     )
