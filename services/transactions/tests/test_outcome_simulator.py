@@ -61,7 +61,9 @@ class TestEffectiveProbabilities:
         # At utilization=0.5, util_boost is exactly 0
         # velocity_24h=0 → velocity_boost=0
         # So effective_p_accept should equal base
-        p = effective_p_accept(base_p_accept=0.3, current_utilization=0.5, velocity_24h=0.0)
+        p = effective_p_accept(
+            base_p_accept=0.3, current_utilization=0.5, velocity_24h=0.0
+        )
         assert p == pytest.approx(0.3, abs=1e-6)
 
     def test_p_accept_increases_with_utilization(self) -> None:
@@ -101,8 +103,12 @@ class TestEffectiveProbabilities:
 
     def test_p_default_increases_with_low_paydown(self) -> None:
         # Low paydown rate = poor repayment behavior = higher default risk
-        high_paydown = effective_p_default(0.05, current_utilization=0.5, paydown_rate_30d=0.9)
-        low_paydown = effective_p_default(0.05, current_utilization=0.5, paydown_rate_30d=0.1)
+        high_paydown = effective_p_default(
+            0.05, current_utilization=0.5, paydown_rate_30d=0.9
+        )
+        low_paydown = effective_p_default(
+            0.05, current_utilization=0.5, paydown_rate_30d=0.1
+        )
         assert low_paydown > high_paydown
 
 

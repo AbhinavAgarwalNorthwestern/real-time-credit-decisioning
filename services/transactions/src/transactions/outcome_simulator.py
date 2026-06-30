@@ -308,7 +308,9 @@ async def run_simulator_loop(
                 continue
             params = params_lookup.get(decision.customer_id)
             if params is None:
-                logger.warning('skip_unknown_customer customer_id=%s', decision.customer_id)
+                logger.warning(
+                    'skip_unknown_customer customer_id=%s', decision.customer_id
+                )
                 continue
             outcome = simulate_outcome(decision, params, rng)
             await producer.send_and_wait(
