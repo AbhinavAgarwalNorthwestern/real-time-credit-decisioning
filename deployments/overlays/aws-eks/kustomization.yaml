@@ -5,6 +5,7 @@ metadata:
 
 resources:
   - ../../base
+  - decisioner-ingress.yaml
 
 # ECR image references. Replace AWS_ACCOUNT_ID and AWS_REGION below
 # with values from `terraform output` — or set via `kustomize edit set image`
