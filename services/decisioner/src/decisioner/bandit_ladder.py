@@ -263,12 +263,11 @@ def simulate_bandit(
     Returns a `BanditSimulationResult` with cumulative reward and per-arm
     pull counts. Per-step regret is `oracle_reward - chosen_reward`.
     """
-    n_arms_seen: dict[int, int] = {}
     cum_reward = 0.0
     cum_regret = 0.0
     pulls_per_arm: dict[int, int] = {}
 
-    for i, ctx in enumerate(contexts):
+    for _i, ctx in enumerate(contexts):
         action = policy.select_action(ctx)
         reward = float(true_reward_fn(ctx, action))
         if oracle_action_fn is not None:

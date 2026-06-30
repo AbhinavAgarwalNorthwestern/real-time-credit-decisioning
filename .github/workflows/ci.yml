@@ -33,7 +33,7 @@ jobs:
         run: uv sync --all-extras --dev || uv sync --all-extras
 
       - name: Ensure dev tools available
-        run: uv pip install --no-deps mypy ruff pytest pytest-asyncio pytest-mock
+        run: uv pip install mypy ruff pytest pytest-asyncio pytest-mock
 
       - name: Ruff check
         run: uv run ruff check .
@@ -56,7 +56,7 @@ jobs:
         run: uv sync --all-extras --dev || uv sync --all-extras
 
       - name: Ensure dev tools available
-        run: uv pip install --no-deps mypy ruff pytest pytest-asyncio pytest-mock
+        run: uv pip install mypy ruff pytest pytest-asyncio pytest-mock
 
       - name: Mypy strict
         run: uv run mypy --strict services/ infra/lib/
@@ -76,7 +76,7 @@ jobs:
         run: uv sync --all-extras --dev || uv sync --all-extras
 
       - name: Ensure dev tools available
-        run: uv pip install --no-deps mypy ruff pytest pytest-asyncio pytest-mock
+        run: uv pip install mypy ruff pytest pytest-asyncio pytest-mock
 
       - name: Unit tests (fast, no cluster needed)
         run: uv run pytest --import-mode=importlib -m "not integration and not pipeline" -q --tb=short
@@ -97,7 +97,7 @@ jobs:
         run: uv sync --all-extras --dev || uv sync --all-extras
 
       - name: Ensure dev tools available
-        run: uv pip install --no-deps mypy ruff pytest pytest-asyncio pytest-mock
+        run: uv pip install mypy ruff pytest pytest-asyncio pytest-mock
 
       - name: Integration tests (RW/Kafka mocked, no live cluster)
         run: uv run pytest --import-mode=importlib -m integration -q --tb=short
@@ -118,7 +118,7 @@ jobs:
         run: uv sync --all-extras --dev || uv sync --all-extras
 
       - name: Ensure dev tools available
-        run: uv pip install --no-deps mypy ruff pytest pytest-asyncio pytest-mock
+        run: uv pip install mypy ruff pytest pytest-asyncio pytest-mock
 
       - name: Pipeline smoke test (offline mode, synthetic data)
         run: uv run pytest --import-mode=importlib -m pipeline -q --tb=short

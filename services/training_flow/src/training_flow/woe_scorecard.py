@@ -175,7 +175,7 @@ def compute_woe(
             )
         except ValueError:
             df_sorted['bin'] = 0
-        for bin_id, group in df_sorted.groupby('bin'):
+        for _bin_id, group in df_sorted.groupby('bin'):
             lo = float(group['x'].min())
             hi = float(group['x'].max())
             bins.append(

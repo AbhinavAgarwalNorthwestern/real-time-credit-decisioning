@@ -15,7 +15,6 @@ import json
 import random
 
 import pytest
-
 from transactions.outcome_simulator import (
     DISCOUNT_FACTOR,
     LGD,

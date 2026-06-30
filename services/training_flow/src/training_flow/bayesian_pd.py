@@ -197,8 +197,6 @@ def predict_pd_posterior(
     """
     X = df[feature_cols].to_numpy(dtype=float)
     seg = df[segment_col].to_numpy(dtype=int)
-    n_samples = posterior.n_samples
-    n_rows = len(X)
 
     eta = (
         posterior.segment_intercepts[:, seg]  # (n_samples, n_rows)

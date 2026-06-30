@@ -44,7 +44,6 @@ import math
 import os
 import random
 import signal
-import time
 from dataclasses import dataclass
 
 # Standard MLflow/Kafka logging

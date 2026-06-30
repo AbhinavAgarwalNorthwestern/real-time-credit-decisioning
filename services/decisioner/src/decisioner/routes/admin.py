@@ -56,7 +56,7 @@ async def approve_challenger(
     try:
         mv = client.get_model_version_by_alias(REGISTERED_MODEL_NAME, 'challenger')
     except Exception as exc:
-        raise HTTPException(404, f'No challenger alias found: {exc}')
+        raise HTTPException(404, f'No challenger alias found: {exc}') from exc
     version = int(mv.version)
     record_approval(client, REGISTERED_MODEL_NAME, version, req.approver)
     four_eyes = has_four_eyes(client, REGISTERED_MODEL_NAME, version)
@@ -78,7 +78,7 @@ async def promote_challenger(request: Request) -> PromoteResponse:
             'challenger',
         )
     except Exception as exc:
-        raise HTTPException(404, f'No challenger alias found: {exc}')
+        raise HTTPException(404, f'No challenger alias found: {exc}') from exc
 
     version = int(challenger_mv.version)
     if not has_four_eyes(client, REGISTERED_MODEL_NAME, version):
@@ -126,7 +126,7 @@ async def set_canary(req: CanaryRequest, request: Request) -> dict:
             str(req.fraction),
         )
     except Exception as exc:
-        raise HTTPException(404, f'No challenger alias: {exc}')
+        raise HTTPException(404, f'No challenger alias: {exc}') from exc
     request.app.state.canary_fraction = req.fraction
     logger.info('canary_fraction_set', fraction=req.fraction)
     return {'canary_fraction': req.fraction}

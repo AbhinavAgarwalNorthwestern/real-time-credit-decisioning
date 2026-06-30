@@ -209,7 +209,6 @@ class RetrainingFlow(FlowSpec):
         from training_flow.ope import evaluate_policy_vs_logged
 
         df = self.df
-        feature_cols = self.feature_cols_neural
         split_fractions = {'train': 0.7, 'val': 0.15, 'test': 0.15}
 
         # Group-constrained OOT split (same logic as __main__.py)
